@@ -86,6 +86,150 @@ test("contacts return to a table after save and retain inputs after a failed sav
     cleanup();
   }
 });
+
+test("contact database picker reuses the saved UUID and prevents duplicate selection", async () => {
+  const existing = {
+    ...journey.contacts[0],
+    id: randomUUID(),
+    name: "Saved vendor",
+    source: "Internal",
+    source_kind: "internal" as const,
+    source_id: null,
+  };
+  let command: Command | undefined;
+  const ui = render(
+    <Contacts
+      j={journey}
+      edit
+      busy={false}
+      directory={[existing]}
+      dirty={() => {}}
+      run={async (c) => {
+        command = c;
+        return true;
+      }}
+    />,
+  );
+  try {
+    fireEvent.click(ui.getByRole("button", { name: "Edit contacts" }));
+    fireEvent.click(ui.getByRole("button", { name: "Add from database" }));
+    fireEvent.click(ui.getByRole("button", { name: /^Saved vendor/ }));
+    fireEvent.click(ui.getByRole("button", { name: "Add from database" }));
+    assert.equal(ui.queryByRole("button", { name: /^Saved vendor/ }), null);
+    await act(async () =>
+      fireEvent.click(ui.getByRole("button", { name: "Simpan contacts" })),
+    );
+    assert.ok(
+      (command?.data?.contacts as Journey["contacts"]).some(
+        (c) => c.id === existing.id,
+      ),
+    );
+  } finally {
+    cleanup();
+  }
+});
+
+test("Docs and itinerary start in view and leave edit only after successful save", async () => {
+  for (const saved of [false, true]) {
+    const doc = {
+      id: randomUUID(),
+      version: 1,
+      title: "Read first",
+      date: "2026-10-14",
+      creator: user.id,
+      category: "SOP",
+      body: "## Saved body",
+      created_at: "2026-10-14",
+      updated_at: "2026-10-14",
+    };
+    const ui = render(
+      <InternalDocs
+        s={{
+          ...snapshot,
+          user: { ...user, privileges: { ...user.privileges, docs: "edit" } },
+        }}
+        document={doc}
+        busy={false}
+        navigate={() => {}}
+        onDirty={() => {}}
+        run={async () => saved}
+      />,
+    );
+    try {
+      assert.equal(ui.queryByRole("button", { name: "Simpan dokumen" }), null);
+      fireEvent.click(ui.getByRole("button", { name: /^Edit$/ }));
+      fireEvent.change(ui.getByRole("textbox", { name: "Judul *" }), {
+        target: { value: "Edited title" },
+      });
+      await act(async () =>
+        fireEvent.submit(ui.container.querySelector("form")!),
+      );
+      assert.equal(
+        Boolean(ui.queryByRole("button", { name: "Simpan dokumen" })),
+        !saved,
+      );
+    } finally {
+      cleanup();
+    }
+    const itin = render(
+      <Detail
+        journey={journey}
+        snapshot={snapshot}
+        busy={false}
+        error=""
+        onCommand={async () => saved}
+        onEdit={() => {}}
+        onNavigate={() => {}}
+        onDirty={() => {}}
+      />,
+    );
+    try {
+      fireEvent.click(itin.getByRole("button", { name: "Itinerary Draft" }));
+      assert.equal(itin.queryByLabelText("Judul Day 1"), null);
+      fireEvent.click(itin.getByRole("button", { name: "Edit itinerary" }));
+      fireEvent.change(itin.getByLabelText("Judul Day 1"), {
+        target: { value: "Updated day" },
+      });
+      await act(async () =>
+        fireEvent.click(itin.getByRole("button", { name: "Simpan itinerary" })),
+      );
+      assert.equal(Boolean(itin.queryByLabelText("Judul Day 1")), !saved);
+    } finally {
+      cleanup();
+    }
+  }
+});
+
+test("Docs column menus provide sorting and independent column filters", () => {
+  const events: [string, string][] = [];
+  const ui = render(
+    <InternalDocs
+      s={snapshot}
+      busy={false}
+      run={async () => false}
+      navigate={() => {}}
+      onDirty={() => {}}
+      onFilter={(key, value) => events.push([key, value])}
+    />,
+  );
+  try {
+    fireEvent.click(ui.getByRole("button", { name: "Kolom Judul" }));
+    fireEvent.click(ui.getByRole("button", { name: "Urut naik ↑" }));
+    assert.deepEqual(events, [
+      ["sort", "title"],
+      ["order", "asc"],
+    ]);
+    fireEvent.click(ui.getByRole("button", { name: "Kolom Creator" }));
+    fireEvent.change(ui.getByRole("textbox", { name: "Filter Creator" }), {
+      target: { value: "Alya" },
+    });
+    assert.deepEqual(events.at(-1), ["creator", "Alya"]);
+    fireEvent.keyDown(document, { key: "Escape" });
+    assert.equal(ui.queryByRole("dialog"), null);
+  } finally {
+    cleanup();
+  }
+});
 test("Internal directory shows source column, compact saved contacts and search", () => {
   const ui = render(
     <InternalContacts
@@ -111,7 +255,8 @@ test("Internal directory shows source column, compact saved contacts and search"
   );
   assert.ok(ui.getByRole("columnheader", { name: "Sumber" }));
   assert.equal(ui.queryByRole("button", { name: /Share/ }), null);
-  assert.ok(ui.getByRole("link", { name: "CRM · School trip" }));
+  assert.ok(ui.getByText("CRM · School trip"));
+  assert.ok(ui.getByRole("button", { name: "Edit contact Original contact" }));
   assert.equal(ui.queryByRole("textbox", { name: "Nama contact" }), null);
   fireEvent.change(ui.getByRole("textbox", { name: "Cari contacts" }), {
     target: { value: "no matching contact" },
@@ -196,6 +341,7 @@ test("shared Trip uses member tabs with per-tab edit rights and compact public c
   fireEvent.click(ui.getByRole("button", { name: "Notes" }));
   assert.equal(ui.queryByRole("button", { name: /Simpan/ }), null);
   fireEvent.click(ui.getByRole("button", { name: "Itinerary" }));
+  fireEvent.click(ui.getByRole("button", { name: "Edit itinerary" }));
   assert.ok(ui.getByRole("button", { name: "Simpan itinerary" }));
   assert.equal(ui.queryByText("Itinerary template"), null);
   fireEvent.click(ui.getByRole("button", { name: "Finance" }));
@@ -450,8 +596,10 @@ test("Internal Docs table opens documents and view privilege cannot edit or shar
   );
   try {
     assert.deepEqual(
-      ui.getAllByRole("columnheader").map((el) => el.textContent),
-      ["Judul", "Date", "Creator", "Category"],
+      ui
+        .getAllByRole("columnheader")
+        .map((el) => el.querySelector("button")?.getAttribute("aria-label")),
+      ["Kolom Judul", "Kolom Date", "Kolom Creator", "Kolom Category"],
     );
     fireEvent.click(ui.getByRole("button", { name: "SOP" }));
     assert.equal(destination, "/docs/" + doc.id);
@@ -927,6 +1075,8 @@ test("sales notes are isolated and itinerary descriptions use plain text", async
     assert.ok(ui.getByLabelText("Judul note"));
     assert.ok(ui.container.querySelector(".panel > .template-picker"));
     fireEvent.click(ui.getByRole("button", { name: "Itinerary Draft" }));
+    assert.equal(ui.queryByLabelText("Activity description"), null);
+    fireEvent.click(ui.getByRole("button", { name: "Edit itinerary" }));
     assert.equal(ui.getByLabelText("Activity description").tagName, "TEXTAREA");
     assert.equal(
       ui.container.querySelector(".itinerary-row .rich-editor"),

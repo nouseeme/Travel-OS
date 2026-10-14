@@ -1,4 +1,5 @@
 "use client";
+import { SelectionTable } from "./selection-table";
 import { useState } from "react";
 import type { Snapshot, Command, Transaction } from "@/lib/model";
 import { moneyLabel, shortDate } from "@/lib/format";
@@ -59,7 +60,7 @@ export function Corrections({
             {review && (
               <>
                 <div className="table-wrap">
-                  <table>
+                  <SelectionTable>
                     <thead>
                       <tr>
                         <th>Field</th>
@@ -85,7 +86,7 @@ export function Corrections({
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </SelectionTable>
                 </div>
                 {s.user.role === "admin" && (
                   <div className="row-actions">

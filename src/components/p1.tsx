@@ -1,14 +1,8 @@
 "use client";
+import { SelectionTable } from "./selection-table";
 import { minorUnits, decimalString } from "@/lib/money";
 import { useEffect, useState } from "react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import dynamic from "next/dynamic";
 import type {
   Snapshot,
   Command,
@@ -22,6 +16,17 @@ import { RichEditor } from "./rich-editor";
 import { Toast } from "./toast";
 import { TripPipeline, AuditDiff } from "./p2";
 import { localTimezone, localTimestamp } from "@/lib/time";
+const ComparisonChart = dynamic(() => import("./comparison-chart"), {
+  ssr: false,
+  loading: () => <p role="status">Menyiapkan grafik…</p>,
+});
+const SalesStageChart = dynamic(
+  () => import("./comparison-chart").then((m) => m.SalesStageChart),
+  {
+    ssr: false,
+    loading: () => <p role="status">Menyiapkan grafik…</p>,
+  },
+);
 
 function useInsights(
   mode: string,
@@ -231,17 +236,10 @@ export function SalesAnalytics({
             </div>
           </div>
           <div className="chart">
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={chart}>
-                <XAxis dataKey="name" />
-                <YAxis allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#235c46" name="Active leads" />
-              </BarChart>
-            </ResponsiveContainer>
+            <SalesStageChart data={chart} />
           </div>
           <div className="table-wrap">
-            <table>
+            <SelectionTable>
               <thead>
                 <tr>
                   <th>Lead</th>
@@ -275,7 +273,7 @@ export function SalesAnalytics({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </SelectionTable>
           </div>
         </>
       )}
@@ -339,7 +337,7 @@ export function Comparison({ s }: { s: Snapshot }) {
             <p>Periode tanpa transaksi ditampilkan sebagai 0.</p>
           )}
           <div className="table-wrap">
-            <table>
+            <SelectionTable>
               <thead>
                 <tr>
                   <th>Ukuran</th>
@@ -371,34 +369,16 @@ export function Comparison({ s }: { s: Snapshot }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </SelectionTable>
           </div>
           <div className="chart">
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart
-                data={fields.map((f) => ({
-                  name: f.label,
-                  previous: Number(d.previous[f.key]),
-                  current: Number(d.current[f.key]),
-                }))}
-              >
-                <XAxis dataKey="name" />
-                <YAxis
-                  tickFormatter={(v) =>
-                    new Intl.NumberFormat("id-ID", {
-                      notation: "compact",
-                    }).format(v)
-                  }
-                />
-                <Tooltip
-                  formatter={(v) =>
-                    new Intl.NumberFormat("id-ID").format(Number(v))
-                  }
-                />
-                <Bar dataKey="previous" name="Sebelumnya" fill="#a8b7a6" />
-                <Bar dataKey="current" name="Terbaru" fill="#235c46" />
-              </BarChart>
-            </ResponsiveContainer>
+            <ComparisonChart
+              data={fields.map((f) => ({
+                name: f.label,
+                previous: Number(d.previous[f.key]),
+                current: Number(d.current[f.key]),
+              }))}
+            />
           </div>
           <small>
             Grafik dibulatkan untuk tampilan; tabel menggunakan nilai IDR tepat.
@@ -411,7 +391,7 @@ export function Comparison({ s }: { s: Snapshot }) {
 export function AuditViewer({ s }: { s: Snapshot }) {
   return (
     <div className="table-wrap audit-history">
-      <table>
+      <SelectionTable>
         <thead>
           <tr>
             <th>Waktu</th>
@@ -438,7 +418,7 @@ export function AuditViewer({ s }: { s: Snapshot }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </SelectionTable>
       {!s.audit?.length && <p>Belum ada event pada pencarian ini.</p>}
     </div>
   );

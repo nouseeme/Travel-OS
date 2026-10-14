@@ -1810,6 +1810,78 @@ await test("live Trip link management requires Trips edit and Finance sharing re
     due: "",
   });
 });
+await test("public link request budgets are isolated and invalid tokens do not allocate buckets", async () => {
+  await db.exec("reset role");
+  await db.query(
+    "insert into private.share_rate(bucket,window_start,hits) values($1,date_trunc('minute',clock_timestamp()),300) on conflict(bucket) do update set window_start=excluded.window_start,hits=300",
+    ["live:" + liveLink],
+  );
+  await anonymous();
+  await assert.rejects(liveRead(), (error: any) => error.code === "PT429");
+  assert.ok((await liveRead(secondToken)).journey);
+  await db.exec("reset role");
+  const before = (
+    await db.query<{ n: number }>(
+      "select count(*)::int n from private.share_rate",
+    )
+  ).rows[0].n;
+  await anonymous();
+  await assert.rejects(liveRead("f".repeat(64)));
+  await db.exec("reset role");
+  assert.equal(
+    (
+      await db.query<{ n: number }>(
+        "select count(*)::int n from private.share_rate",
+      )
+    ).rows[0].n,
+    before,
+  );
+  await db.query("delete from private.share_rate where bucket=$1", [
+    "live:" + liveLink,
+  ]);
+  // Snapshot requests use independent buckets, including different publication kinds.
+  const snapshotToken = "d".repeat(64),
+    otherSnapshotToken = "e".repeat(64);
+  const links = await db.query<{ id: string }>(
+    "insert into private.contact_share_links(workspace_id,token_hash,payload,expires_at,created_by) values($1,encode(sha256(convert_to($2,'UTF8')),'hex'),'{\"kind\":\"internal_contacts\",\"contacts\":[]}',now()+interval '1 day',$3),($1,encode(sha256(convert_to($4,'UTF8')),'hex'),'{\"kind\":\"internal_contacts\",\"contacts\":[]}',now()+interval '1 day',$3) returning id",
+    [w, snapshotToken, admin, otherSnapshotToken],
+  );
+  await db.query(
+    "insert into private.share_rate(bucket,window_start,hits) values($1,date_trunc('minute',clock_timestamp()),300)",
+    ["snapshot:contacts:" + links.rows[0].id],
+  );
+  await anonymous();
+  assert.equal(
+    (
+      await db.query<{ d: any }>("select public.app_share_read($1) d", [
+        snapshotToken,
+      ])
+    ).rows[0].d,
+    null,
+  );
+  assert.equal(
+    (
+      await db.query<{ d: any }>("select public.app_share_read($1) d", [
+        otherSnapshotToken,
+      ])
+    ).rows[0].d.kind,
+    "internal_contacts",
+  );
+  await db.exec("reset role");
+  // A new minute restores the exhausted capability's budget.
+  await db.query(
+    "update private.share_rate set window_start=clock_timestamp()-interval '2 minutes' where bucket=$1",
+    ["snapshot:contacts:" + links.rows[0].id],
+  );
+  await anonymous();
+  assert.ok(
+    (
+      await db.query<{ d: any }>("select public.app_share_read($1) d", [
+        snapshotToken,
+      ])
+    ).rows[0].d,
+  );
+});
 await test("anonymous live projection hides member tasks, all ledger data and member identity", async () => {
   await anonymous();
   const d = await liveRead();
@@ -2173,6 +2245,168 @@ await test("non-admin module editors cannot access Team & Settings or configurat
   await asUser(admin);
   assert.ok((await snapshot("configuration")).user);
   assert.ok((await snapshot("audit")).user);
+});
+await test("reused contacts deduplicate, cap recent sources, update all links and reject stale edits", async () => {
+  await asUser(admin);
+  const shared = {
+    id: randomUUID(),
+    name: "Shared supplier",
+    email: "shared.contact@example.test",
+    phone: "",
+    note: "Initial",
+    role: "Vendor",
+    organization: "Supplier",
+  };
+  const existing = (await snapshot("docs")).internalContacts;
+  await cmd(
+    "save_internal_contacts",
+    { contacts: [...existing.contacts, shared] },
+    undefined,
+    existing.version,
+  );
+  const parents: string[] = [];
+  for (let n = 0; n < 7; n++) {
+    const id = await cmd("create_journey", {
+      ...leadData,
+      name: `Reuse source ${n}`,
+      pic: admin,
+    });
+    parents.push(id);
+    await cmd(
+      "content",
+      { contacts: [{ ...shared, id: n === 0 ? randomUUID() : shared.id }] },
+      id,
+      1,
+    );
+  }
+  const directory = (await snapshot("docs")).contactDirectory;
+  const rows = directory.filter((c: any) => c.email === shared.email);
+  assert.equal(rows.length, 1);
+  const contact = rows[0];
+  assert.equal(contact.sources.length, 5);
+  assert.equal(new Set(contact.sources.map((s: any) => s.id)).size, 5);
+  assert.ok(!contact.sources.some((s: any) => s.label === "Internal"));
+  const changed = {
+    ...shared,
+    id: contact.id,
+    name: "Shared supplier updated",
+    email: "updated.contact@example.test",
+    note: "Updated everywhere",
+  };
+  await cmd("edit_contact", { contact: changed }, contact.id, contact.version);
+  for (const id of parents) {
+    const j = (await snapshot("sales", {}, id)).journeys[0];
+    assert.equal(j.contacts[0].name, changed.name);
+    assert.equal(j.contacts[0].email, changed.email);
+    assert.equal(j.version, 3);
+  }
+  const internal = (await snapshot("docs")).internalContacts;
+  assert.ok(internal.contacts.some((c: any) => c.email === changed.email));
+  await assert.rejects(
+    cmd("edit_contact", { contact: changed }, contact.id, contact.version),
+    /reload/,
+  );
+  assert.equal(
+    (await snapshot("docs")).contactDirectory.filter(
+      (c: any) => c.email === changed.email,
+    ).length,
+    1,
+  );
+  // Reusing a UUID still yields one directory row if a contextual copy has different text.
+  const j = (await snapshot("sales", {}, parents[1])).journeys[0];
+  await cmd(
+    "content",
+    { contacts: [{ ...j.contacts[0], email: "contextual@example.test" }] },
+    j.id,
+    j.version,
+  );
+  const now = (await snapshot("docs")).contactDirectory;
+  // The directory chooses the canonical UUID; random fixture IDs need not sort first.
+  assert.equal(now.filter((c: any) => c.id === contact.id).length, 1);
+});
+await test("database contact lookup respects module access and contact edits need Internal edit", async () => {
+  await db.exec("reset role");
+  const member = randomUUID();
+  await db.query("insert into auth.users(id,email) values($1,$2)", [
+    member,
+    member + "@example.test",
+  ]);
+  await db.query(
+    "insert into public.memberships(id,workspace_id,name,email,role,status,privileges) values($1,$2,'Lookup reader',$3,'member','active',$4)",
+    [
+      member,
+      w,
+      member + "@example.test",
+      JSON.stringify({
+        sales: "view",
+        trips: "none",
+        finance: "none",
+        docs: "none",
+      }),
+    ],
+  );
+  await asUser(member);
+  const directory = (await snapshot("sales")).contactDirectory;
+  assert.ok(directory.length);
+  assert.ok(
+    directory.every((c: any) => c.sources.every((s: any) => s.kind === "lead")),
+  );
+  await assert.rejects(
+    cmd(
+      "edit_contact",
+      { contact: directory[0] },
+      directory[0].id,
+      directory[0].version,
+    ),
+    /Internal edit/,
+  );
+  await asUser(admin);
+});
+await test("Docs sorts and column filters run before pagination across more than fifty rows", async () => {
+  await asUser(admin);
+  for (let n = 0; n < 60; n++)
+    await cmd("create_doc", {
+      title: `Column demo ${String(n).padStart(2, "0")}`,
+      date: n % 2 ? "2026-09-01" : "2026-08-01",
+      category: "Column Regression",
+      body: "Column controls",
+    });
+  const first = await snapshot("docs", {
+    category: "Column Regression",
+    sort: "title",
+    order: "desc",
+  });
+  assert.equal(first.count, 60);
+  assert.equal(first.documents.length, 50);
+  assert.equal(first.documents[0].title, "Column demo 59");
+  assert.equal(first.documents[49].title, "Column demo 10");
+  const second = await snapshot("docs", {
+    category: "Column Regression",
+    sort: "title",
+    order: "desc",
+    page: "1",
+  });
+  assert.equal(second.documents.length, 10);
+  assert.equal(second.documents[0].title, "Column demo 09");
+  const filtered = await snapshot("docs", {
+    category: "Column Reg",
+    title: "demo 5",
+    creator: "Admin",
+    from: "2026-09-01",
+    to: "2026-09-01",
+    sort: "date",
+    order: "asc",
+  });
+  assert.equal(filtered.count, 5);
+  assert.ok(
+    filtered.documents.every(
+      (d: any) => d.title.includes("demo 5") && d.date === "2026-09-01",
+    ),
+  );
+  await assert.rejects(
+    snapshot("docs", { sort: "body; drop table", order: "asc" }),
+    /Sort/,
+  );
 });
 console.log(
   `Database regression: ${passed} scenarios passed (embedded PostgreSQL; hosted Auth/email/concurrency remain separate gates).`,

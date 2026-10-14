@@ -1,4 +1,5 @@
 "use client";
+import { SelectionTable } from "./selection-table";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -72,6 +73,7 @@ import {
   AuditViewer,
 } from "./p1";
 export function Dashboard() {
+  const [selectedPeople, setSelectedPeople] = useState<string[]>([]);
   const path = usePathname(),
     router = useRouter();
   const parts = path.split("/").filter(Boolean);
@@ -115,6 +117,7 @@ export function Dashboard() {
     [appliedFilters, setAppliedFilters] = useState<Filters>({}),
     [dirty, setDirty] = useState(false);
   const requestSequence = useRef(0),
+    activeRequest = useRef<AbortController | null>(null),
     sending = useRef(false);
   const effective = {
     ...filters,
@@ -122,6 +125,9 @@ export function Dashboard() {
   };
   const fetchState = useCallback(async () => {
     if (auth) return;
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
     const seq = ++requestSequence.current;
     setLoading(true);
     try {
@@ -136,11 +142,18 @@ export function Dashboard() {
           }).filter(([, v]) => v !== undefined && v !== ""),
         ),
       });
-      const r = await fetch("/api/workspace?" + q, { cache: "no-store" });
+      const r = await fetch("/api/workspace?" + q, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
       const d = await r.json();
       if (seq !== requestSequence.current) return;
       if (!r.ok) {
-        if (r.status === 403) setS(null);
+        if (r.status === 401 || r.status === 403) {
+          setS(null);
+          setEditor(null);
+          setDirty(false);
+        }
         if (r.status === 401) {
           router.replace("/login");
           return;
@@ -152,23 +165,30 @@ export function Dashboard() {
       setAppliedFilters(filters);
       setError("");
     } catch (e) {
-      if (seq === requestSequence.current) {
+      if (!controller.signal.aborted && seq === requestSequence.current) {
         setError((e as Error).message);
       }
     } finally {
-      if (seq === requestSequence.current) setLoading(false);
+      if (seq === requestSequence.current) {
+        activeRequest.current = null;
+        setLoading(false);
+      }
     }
   }, [view, recordId, JSON.stringify(filters), archive, auth, router]);
   useEffect(() => {
     void fetchState();
     return () => {
       requestSequence.current++;
+      activeRequest.current?.abort();
+      activeRequest.current = null;
     };
   }, [fetchState]);
   useEffect(() => {
     const refreshLocalDay = () => {
       if (
         s &&
+        document.visibilityState === "visible" &&
+        !activeRequest.current &&
         !editor &&
         !busy &&
         !dirty &&
@@ -237,12 +257,22 @@ export function Dashboard() {
     }
   }
   async function logout() {
-    await fetch("/api/auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "logout" }),
-    });
-    router.replace("/login");
+    try {
+      const response = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "logout" }),
+      });
+      if (!response.ok) throw Error((await response.json()).error);
+      requestSequence.current++;
+      activeRequest.current?.abort();
+      setS(null);
+      setEditor(null);
+      setDirty(false);
+      router.replace("/login");
+    } catch (error) {
+      setError((error as Error).message || "Logout belum berhasil. Coba lagi.");
+    }
   }
   function open(e: Editor) {
     if (
@@ -758,6 +788,8 @@ export function Dashboard() {
                             </div>
                             <InternalDocs
                               key="docs-list"
+                              filters={filters}
+                              onFilter={filter}
                               s={s}
                               run={run}
                               busy={busy}
@@ -796,11 +828,13 @@ export function Dashboard() {
                           />
                           <Stat
                             label="Perlu perhatian"
-                              value={String(
-                                s.tasks.filter((t) =>
-                                  ["Overdue", "Due today", "Due soon"].includes(deadline(t, s.today)),
-                                ).length,
-                              )}
+                            value={String(
+                              s.tasks.filter((t) =>
+                                ["Overdue", "Due today", "Due soon"].includes(
+                                  deadline(t, s.today),
+                                ),
+                              ).length,
+                            )}
                             icon={CalendarDays}
                             text="Deadline sudah dekat / terlewat"
                             warn
@@ -974,7 +1008,7 @@ export function Dashboard() {
                         </div>
                         {archive ? (
                           <div className="table-wrap">
-                            <table>
+                            <SelectionTable>
                               <thead>
                                 <tr>
                                   <th>
@@ -1031,7 +1065,7 @@ export function Dashboard() {
                                   </tr>
                                 ))}
                               </tbody>
-                            </table>
+                            </SelectionTable>
                             {!s.journeys.length && (
                               <Empty
                                 text={`Belum ada ${view === "trips" ? "trip" : "lead"} di archive.`}
@@ -1185,6 +1219,7 @@ export function Dashboard() {
                             <Corrections s={s} run={run} busy={busy} />
                             <Ledger
                               s={s}
+                              run={run}
                               canEdit={can(s.user, "finance", true)}
                               onEdit={open}
                             />
@@ -1313,9 +1348,93 @@ export function Dashboard() {
                           </div>
                         </div>
                         <div className="people-grid">
+                          <div className="bulk-toolbar">
+                            <label>
+                              <input
+                                type="checkbox"
+                                aria-label="Pilih semua anggota"
+                                checked={
+                                  s.people.filter(
+                                    (p) =>
+                                      p.status === "active" &&
+                                      p.id !== s.user.id,
+                                  ).length > 0 &&
+                                  s.people
+                                    .filter(
+                                      (p) =>
+                                        p.status === "active" &&
+                                        p.id !== s.user.id,
+                                    )
+                                    .every((p) => selectedPeople.includes(p.id))
+                                }
+                                onChange={(e) =>
+                                  setSelectedPeople(
+                                    e.target.checked
+                                      ? s.people
+                                          .filter(
+                                            (p) =>
+                                              p.status === "active" &&
+                                              p.id !== s.user.id,
+                                          )
+                                          .map((p) => p.id)
+                                      : [],
+                                  )
+                                }
+                              />{" "}
+                              Pilih semua anggota
+                            </label>
+                            <Button
+                              size="sm"
+                              disabled={!selectedPeople.length || busy}
+                              onClick={async () => {
+                                if (
+                                  !confirm(
+                                    `Deactivate ${selectedPeople.length} anggota?`,
+                                  )
+                                )
+                                  return;
+                                if (
+                                  await run({
+                                    action: "bulk_action",
+                                    data: {
+                                      commands: s.people
+                                        .filter((p) =>
+                                          selectedPeople.includes(p.id),
+                                        )
+                                        .map((p) => ({
+                                          action: "deactivate",
+                                          id: p.id,
+                                          version: p.version,
+                                        })),
+                                    },
+                                  })
+                                )
+                                  setSelectedPeople([]);
+                              }}
+                            >
+                              Deactivate terpilih
+                            </Button>
+                          </div>
                           {s.people.map((p) => (
                             <article className="person-card" key={p.id}>
                               <div className="person-card-head">
+                                <input
+                                  type="checkbox"
+                                  aria-label={`Pilih anggota ${p.name}`}
+                                  disabled={
+                                    busy ||
+                                    p.status !== "active" ||
+                                    p.id === s.user.id
+                                  }
+                                  checked={selectedPeople.includes(p.id)}
+                                  onChange={(e) =>
+                                    setSelectedPeople((prev) =>
+                                      e.target.checked
+                                        ? [...prev, p.id]
+                                        : prev.filter((id) => id !== p.id),
+                                    )
+                                  }
+                                />
                                 <span className="avatar large">
                                   {initials(p.name)}
                                 </span>
@@ -1383,7 +1502,33 @@ export function Dashboard() {
                         </div>
                         <h2 className="spaced-heading">Invitations</h2>
                         <div className="table-wrap">
-                          <table>
+                          <SelectionTable
+                            actionLabel="Revoke terpilih"
+                            onDelete={
+                              s.user.role === "admin"
+                                ? async (ids) => {
+                                    const invitations = s.invitations.filter(
+                                      (i) =>
+                                        ids.includes(i.id) &&
+                                        !["accepted", "revoked"].includes(
+                                          i.status,
+                                        ),
+                                    );
+                                    if (!invitations.length) return false;
+                                    return run({
+                                      action: "bulk_action",
+                                      data: {
+                                        commands: invitations.map((i) => ({
+                                          action: "revoke_invite",
+                                          id: i.id,
+                                          version: i.version,
+                                        })),
+                                      },
+                                    });
+                                  }
+                                : undefined
+                            }
+                          >
                             <thead>
                               <tr>
                                 <th>Nama</th>
@@ -1456,7 +1601,7 @@ export function Dashboard() {
                                 </tr>
                               ))}
                             </tbody>
-                          </table>
+                          </SelectionTable>
                           {!s.invitations.length && (
                             <Empty text="Belum ada invitation. Member bergabung melalui invitation admin." />
                           )}
@@ -1719,17 +1864,45 @@ export function Ledger({
   s,
   canEdit,
   onEdit,
+  run,
 }: {
   s: Snapshot;
   canEdit: boolean;
   onEdit: (e: Editor) => void;
+  run?: (c: Command) => Promise<boolean>;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const transaction = s.transactions.find((t) => t.id === selected);
   return (
     <>
       <div className="table-wrap finance-table">
-        <table>
+        <SelectionTable
+          actionLabel="Void terpilih"
+          readOnlyReason="Void transaksi hanya untuk admin Finance."
+          onDelete={
+            run && s.user.role === "admin" && can(s.user, "finance")
+              ? async (ids) => {
+                  const reason = prompt("Alasan void transaksi terpilih:");
+                  if (!reason?.trim()) return false;
+                  const rows = s.transactions.filter(
+                    (t) => ids.includes(t.id) && t.status === "posted",
+                  );
+                  if (!rows.length) return false;
+                  return run({
+                    action: "bulk_action",
+                    data: {
+                      commands: rows.map((t) => ({
+                        action: "void_transaction",
+                        id: t.id,
+                        version: t.version,
+                        data: { reason },
+                      })),
+                    },
+                  });
+                }
+              : undefined
+          }
+        >
           <thead>
             <tr>
               <th>Tanggal</th>
@@ -1792,7 +1965,7 @@ export function Ledger({
               );
             })}
           </tbody>
-        </table>
+        </SelectionTable>
         {!s.transactions.length && (
           <Empty text="Belum ada transaksi pada filter ini. Gunakan Record transaction untuk mencatat penerimaan atau pengeluaran." />
         )}

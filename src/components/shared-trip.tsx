@@ -1,4 +1,5 @@
 "use client";
+import { SelectionTable } from "./selection-table";
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { Snapshot, Command } from "@/lib/model";
 import type { SharedTripData } from "@/lib/trip-sharing";
@@ -21,10 +22,14 @@ export function SharedTrip({ token }: { token: string }) {
     [dirty, setDirty] = useState(false),
     [editor, setEditor] = useState<Editor | null>(null);
   const sequence = useRef(0),
+    activeRequest = useRef<AbortController | null>(null),
     sending = useRef(false),
     hasData = useRef(false),
     key = useRef("");
   const load = useCallback(async () => {
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
     const seq = ++sequence.current;
     setLoading(true);
     try {
@@ -33,12 +38,15 @@ export function SharedTrip({ token }: { token: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token }),
         cache: "no-store",
+        signal: controller.signal,
       });
       const d = await res.json();
       if (seq !== sequence.current) return;
       if (!res.ok) {
-        if ([403, 404].includes(res.status)) {
+        if ([401, 403, 404].includes(res.status)) {
           setData(null);
+          setEditor(null);
+          setDirty(false);
           hasData.current = false;
         }
         throw Error(d.error);
@@ -47,20 +55,33 @@ export function SharedTrip({ token }: { token: string }) {
       hasData.current = true;
       setError("");
     } catch (e) {
-      if (seq === sequence.current) setError((e as Error).message);
+      if (!controller.signal.aborted && seq === sequence.current)
+        setError((e as Error).message);
     } finally {
-      if (seq === sequence.current) setLoading(false);
+      if (seq === sequence.current) {
+        activeRequest.current = null;
+        setLoading(false);
+      }
     }
   }, [token]);
   useEffect(() => {
     void load();
     return () => {
       sequence.current++;
+      activeRequest.current?.abort();
+      activeRequest.current = null;
     };
   }, [load]);
   useEffect(() => {
     const refresh = () => {
-      if (!dirty && !editor && !sending.current) void load();
+      if (
+        document.visibilityState === "visible" &&
+        !activeRequest.current &&
+        !dirty &&
+        !editor &&
+        !sending.current
+      )
+        void load();
     };
     const timer = setInterval(refresh, 60000);
     window.addEventListener("focus", refresh);
@@ -90,7 +111,15 @@ export function SharedTrip({ token }: { token: string }) {
         }),
       });
       const d = await res.json();
-      if (!res.ok) throw Error(d.error);
+      if (!res.ok) {
+        if ([401, 403, 404].includes(res.status)) {
+          setData(null);
+          hasData.current = false;
+          setEditor(null);
+          setDirty(false);
+        }
+        throw Error(d.error);
+      }
       setNotice(
         c.action === "submit_transaction"
           ? "Pengajuan tersimpan. Menunggu approval member."
@@ -170,7 +199,7 @@ export function SharedTrip({ token }: { token: string }) {
         )}
       </div>
       <div className="table-wrap">
-        <table>
+        <SelectionTable>
           <thead>
             <tr>
               <th>Tanggal</th>
@@ -198,7 +227,7 @@ export function SharedTrip({ token }: { token: string }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </SelectionTable>
       </div>
       {!data.submissions.length && (
         <p className="muted">Belum ada pengajuan.</p>

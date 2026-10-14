@@ -2990,3 +2990,102 @@
 .docs-table td:nth-child(3) {
   min-width: 180px;
 }
+.docs-table th {
+  position: relative;
+}
+.column-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 0;
+}
+.column-toggle.filtered {
+  color: var(--primary, #2563eb);
+}
+.column-menu {
+  position: absolute;
+  z-index: 30;
+  top: 100%;
+  left: 0;
+  min-width: 240px;
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  background: white;
+  color: #243047;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px #0002;
+  font-weight: 400;
+  white-space: normal;
+}
+.docs-table th:last-child .column-menu {
+  left: auto;
+  right: 0;
+}
+.column-menu label {
+  display: grid;
+  gap: 5px;
+}
+.column-menu .row-actions {
+  flex-wrap: wrap;
+}
+.contact-picker {
+  margin: 12px 0;
+  padding: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  display: grid;
+  gap: 10px;
+}
+.contact-picker label {
+  display: grid;
+  gap: 6px;
+}
+.contact-picker-results {
+  max-height: 240px;
+  overflow: auto;
+  display: grid;
+  gap: 4px;
+}
+.contact-picker-results button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 10px;
+  cursor: pointer;
+  text-align: left;
+}
+.contact-picker-results button:hover {
+  background: #eff6ff;
+}
+.contact-sources {
+  white-space: normal;
+  line-height: 1.5;
+  max-width: 420px;
+}
+.contact-edit-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 16px;
+}
+.contact-edit-note {
+  grid-column: 1 / -1;
+}
+.contact-edit-fields label {
+  min-width: 0;
+}
+.selection-cell { width:40px !important;min-width:40px !important;padding:10px !important; }
+.selection-cell input { width:16px;min-height:16px;height:16px;cursor:pointer; }
+.bulk-toolbar { display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;background:#edf3ed;border:1px solid var(--line);border-radius:8px;margin:8px 0; }
+.contact-sources a { cursor:pointer; }

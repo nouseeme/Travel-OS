@@ -22,7 +22,7 @@ export function CashOverview({ rows }: { rows: Snapshot["cashRows"] }) {
         aria-label="Tabel hasil kas per Trip"
         tabIndex={0}
       >
-        <table className="cash-overview-table">
+        <SelectionTable className="cash-overview-table">
           <thead>
             <tr>
               <th scope="col">Trip / Context</th>
@@ -45,7 +45,7 @@ export function CashOverview({ rows }: { rows: Snapshot["cashRows"] }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </SelectionTable>
         {!rows.length && (
           <div className="empty-state">
             Belum ada hasil kas untuk filter ini.

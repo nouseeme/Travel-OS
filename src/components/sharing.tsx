@@ -1,4 +1,5 @@
 "use client";
+import { SelectionTable } from "./selection-table";
 import { useEffect, useState } from "react";
 import type { Journey } from "@/lib/model";
 import {
@@ -80,7 +81,7 @@ export function Sharing({ j }: { j: Journey }) {
         terlihat hanya assignee Public.
       </p>
       <div className="table-wrap">
-        <table>
+        <SelectionTable>
           <thead>
             <tr>
               <th>Tab</th>
@@ -110,7 +111,7 @@ export function Sharing({ j }: { j: Journey }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </SelectionTable>
       </div>
       <div className="section-toolbar">
         <label>

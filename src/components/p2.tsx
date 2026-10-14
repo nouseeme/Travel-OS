@@ -1,4 +1,5 @@
 "use client";
+import { SelectionTable } from "./selection-table";
 import { MoneyInput } from "./money-input";
 import { minorUnits, decimalString } from "@/lib/money";
 import { useEffect, useState, useRef } from "react";
@@ -161,7 +162,29 @@ export function Budget({
               </div>
             </div>
             <div className="table-wrap">
-              <table>
+              <SelectionTable
+                actionLabel="Hapus budget terpilih"
+                onDelete={
+                  can(s.user, "finance", true) && can(s.user, "trips")
+                    ? async (ids) => {
+                        const selected = rows.filter(
+                          (r) => ids.includes(r.category) && r.version !== null,
+                        );
+                        if (!selected.length) return false;
+                        return run({
+                          action: "bulk_action",
+                          data: {
+                            commands: selected.map((r) => ({
+                              action: "delete_budget",
+                              version: r.version,
+                              data: { trip, category: r.category },
+                            })),
+                          },
+                        });
+                      }
+                    : undefined
+                }
+              >
                 <thead>
                   <tr>
                     <th>Kategori</th>
@@ -246,7 +269,7 @@ export function Budget({
                     );
                   })}
                 </tbody>
-              </table>
+              </SelectionTable>
             </div>
             <p className="notice">
               Budget tidak membuat transaksi. Quoted price tidak dihitung
@@ -278,7 +301,7 @@ export function AuditDiff({ metadata }: { metadata: Record<string, unknown> }) {
         {fields.length ? `${fields.length} field berubah` : "Lihat detail"}
       </summary>
       {fields.length > 0 && (
-        <table className="audit-diff">
+        <SelectionTable className="audit-diff">
           <thead>
             <tr>
               <th>Field</th>
@@ -295,7 +318,7 @@ export function AuditDiff({ metadata }: { metadata: Record<string, unknown> }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </SelectionTable>
       )}
       {Object.entries(metadata)
         .filter(

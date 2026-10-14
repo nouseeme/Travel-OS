@@ -18,7 +18,7 @@ export function failure(error: unknown) {
           : "Permintaan gagal. Coba kembali.",
     },
     {
-      status: known ? error.status : 400,
+      status: known ? error.status : error instanceof ZodError ? 400 : 500,
       headers: { "Cache-Control": "private, no-store" },
     },
   );
@@ -40,5 +40,9 @@ export async function body(request: Request) {
     }
     chunks.push(value);
   }
-  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  } catch {
+    throw new AppError("JSON tidak valid.", 400);
+  }
 }

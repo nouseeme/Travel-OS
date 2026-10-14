@@ -3,6 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 import { AppError } from "../domain";
+import { authCookieOptions } from "./cookie-options";
 export function configured() {
   return (
     !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
@@ -20,6 +21,7 @@ export async function supabase() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
+      cookieOptions: authCookieOptions(),
       cookies: {
         getAll: () => jar.getAll(),
         setAll(values) {
@@ -38,12 +40,7 @@ export function adminClient() {
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
 }
-export function dbError(error: { code?: string; message: string }) {
-  throw new AppError(
-    error.message,
-    error.code === "42501" ? 403 : error.code === "40001" ? 409 : 400,
-  );
-}
+export { dbError } from "../database-error";
 export async function verifiedClient() {
   const client = await supabase();
   const { data, error } = await client.auth.getUser();

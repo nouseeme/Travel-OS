@@ -2,6 +2,10 @@ import { z } from "zod";
 import { date, AppError } from "./domain";
 import { validTimezone } from "./time";
 export const filterSchema = z.object({
+  sort: z.enum(["title", "date", "creator", "category"]).optional(),
+  order: z.enum(["asc", "desc"]).optional(),
+  title: z.string().max(200).optional(),
+  creator: z.string().max(200).optional(),
   timezone: z
     .string()
     .max(100)

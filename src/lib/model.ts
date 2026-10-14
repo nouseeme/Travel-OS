@@ -26,6 +26,17 @@ export interface Contact {
   email: string;
   note: string;
 }
+export interface DirectoryContact extends Contact {
+  version?: number;
+  source: string;
+  source_id: string | null;
+  source_kind: "internal" | "lead" | "trip";
+  sources?: {
+    label: string;
+    id: string | null;
+    kind: "internal" | "lead" | "trip";
+  }[];
+}
 export interface Day {
   id: string;
   title: string;
@@ -140,6 +151,10 @@ export interface State {
   timezone: string;
 }
 export interface Filters {
+  sort?: "title" | "date" | "creator" | "category";
+  order?: "asc" | "desc";
+  title?: string;
+  creator?: string;
   actor?: string;
   action?: string;
   budget_trip?: string;
@@ -160,7 +175,7 @@ export interface Filters {
 }
 export interface Snapshot {
   homeTaskCount?: number;
-  contactDirectory?: (Contact & { source: string; source_id: string | null; source_kind: "internal" | "lead" | "trip" })[];
+  contactDirectory?: DirectoryContact[];
   internalContacts?: { contacts: Contact[]; version: number };
   submissions?: import("./trip-sharing").Submission[];
   documents?: InternalDoc[];

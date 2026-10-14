@@ -6,3 +6,12 @@ node_modules/
 *.tsbuildinfo
 coverage/
 supabase/.temp/
+
+# Private working documents and operator artifacts
+/docs/
+/Travel-OS-MVP-PRD.md
+/scripts/prepare-demo.ts
+/.p2-final-db-test-result.txt
+/.trip-sharing-db-test.txt
+/.trip-sharing-unit-test.txt
+*.log

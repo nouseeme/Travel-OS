@@ -21,6 +21,11 @@ const commandSchema = z.object({
     }, "Timezone tidak valid.")
     .default("UTC"),
   action: z.enum([
+    "edit_contact",
+    "bulk_action",
+    "delete_contacts",
+    "delete_docs",
+    "delete_budget",
     "save_internal_contacts",
     "create_doc",
     "update_doc",
@@ -103,7 +108,39 @@ export async function POST(request: Request) {
     originCheck(request);
     const command = commandSchema.parse(await body(request));
     if (command.action === "content") validateContent(command.data || {});
-    if (command.action === "save_internal_contacts") validateContent({ contacts: command.data?.contacts });
+    if (command.action === "edit_contact")
+      validateContent({ contacts: [command.data?.contact] });
+    if (["delete_contacts", "delete_docs"].includes(command.action))
+      z.object({
+        records: z
+          .array(
+            z.object({ id: z.uuid(), version: z.number().int().positive() }),
+          )
+          .min(1)
+          .max(100),
+      }).parse(command.data);
+    if (command.action === "bulk_action")
+      z.object({
+        commands: z
+          .array(
+            z.object({
+              action: z.enum([
+                "archive",
+                "void_transaction",
+                "deactivate",
+                "revoke_invite",
+                "delete_budget",
+              ]),
+              id: z.uuid().optional(),
+              version: z.number().int().positive().optional(),
+              data: z.record(z.string(), z.unknown()).optional(),
+            }),
+          )
+          .min(1)
+          .max(100),
+      }).parse(command.data);
+    if (command.action === "save_internal_contacts")
+      validateContent({ contacts: command.data?.contacts });
     if (["create_doc", "update_doc"].includes(command.action))
       z.object({
         title: z.string().trim().min(1).max(200),

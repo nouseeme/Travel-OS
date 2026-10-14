@@ -1,9 +1,10 @@
 "use client";
 import { useState } from "react";
-import type { Command, Snapshot } from "@/lib/model";
+import type { Command, Snapshot, DirectoryContact } from "@/lib/model";
 import { can } from "@/lib/format";
 import { Contacts } from "./detail";
 import { Button } from "./ui/button";
+import { Modal } from "./ui/dialog";
 
 export function InternalContacts({
   s,
@@ -19,12 +20,10 @@ export function InternalContacts({
   const [managing, setManaging] = useState(false);
   const [search, setSearch] = useState("");
   const [dirty, setDirty] = useState(false);
+  const [selected, setSelected] = useState<DirectoryContact | null>(null);
   const editable = can(s.user, "docs", true);
   const internal = s.internalContacts || { contacts: [], version: 1 };
-  const directory = (s.contactDirectory || []).map((c, index) => ({
-    ...c,
-    id: `${c.source_kind}:${c.source_id || "internal"}:${c.id}:${index}`,
-  }));
+  const directory = s.contactDirectory || [];
   const visible = directory.filter((c) =>
     [c.name, c.phone, c.email, c.note, c.source]
       .join(" ")
@@ -34,12 +33,14 @@ export function InternalContacts({
   const sources = Object.fromEntries(
     directory.map((c) => [
       c.id,
-      {
-        label: c.source,
-        url: c.source_id
-          ? `/${c.source_kind === "lead" ? "sales" : "trips"}/${c.source_id}`
-          : undefined,
-      },
+      (c.sources || [{ label: c.source, id: c.source_id, kind: c.source_kind }])
+        .slice(0, 5)
+        .map((source) => ({
+          label: source.label,
+          url: source.id
+            ? `/${source.kind === "lead" ? "sales" : "trips"}/${source.id}`
+            : undefined,
+        })),
     ]),
   );
   return (
@@ -77,6 +78,7 @@ export function InternalContacts({
             if (saved) setManaging(false);
             return saved;
           }}
+          directory={directory}
         />
       )}
       <div className="internal-docs-toolbar">
@@ -93,11 +95,82 @@ export function InternalContacts({
         key={JSON.stringify(visible)}
         j={{ id: s.user.id, version: internal.version, contacts: visible }}
         edit={false}
-        busy={busy}
+        busy={busy || dirty}
         run={run}
         dirty={() => {}}
         sources={sources}
+        onBulkDelete={
+          editable
+            ? async (ids) =>
+                run({
+                  action: "delete_contacts",
+                  data: {
+                    records: directory
+                      .filter((c) => ids.includes(c.id))
+                      .map((c) => ({ id: c.id, version: c.version })),
+                  },
+                })
+            : undefined
+        }
+        onRowEdit={
+          editable
+            ? (c) => {
+                const record = directory.find((x) => x.id === c.id);
+                if (record) setSelected(record);
+              }
+            : undefined
+        }
       />
+      {selected && (
+        <Modal
+          open
+          title={`Edit contact · ${selected.name}`}
+          onClose={() => {
+            if (busy || (dirty && !confirm("Buang perubahan contact?"))) return;
+            setSelected(null);
+            setDirty(false);
+            onDirty(false);
+          }}
+        >
+          <p>Perubahan berlaku di semua sumber yang memakai kontak ini.</p>
+          <Contacts
+            key={selected.id}
+            j={{
+              id: selected.id,
+              version: selected.version || 1,
+              contacts: [selected],
+            }}
+            edit
+            initialEditing
+            single
+            busy={busy}
+            run={run}
+            dirty={(value) => {
+              setDirty(value);
+              onDirty(value);
+            }}
+            onSave={async (contacts) => {
+              const c = contacts[0];
+              if (!c) return false;
+              const { id, name, phone, email, note, role, organization } = c;
+              const saved = await run({
+                action: "edit_contact",
+                id: selected.id,
+                version: selected.version,
+                data: {
+                  contact: { id, name, phone, email, note, role, organization },
+                },
+              });
+              if (saved) {
+                setSelected(null);
+                setDirty(false);
+                onDirty(false);
+              }
+              return saved;
+            }}
+          />
+        </Modal>
+      )}
     </>
   );
 }

@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   Phone,
   Mail,
+  Pencil,
 } from "lucide-react";
 import { PlainNote } from "./plain-note";
 import { ApplyTemplate } from "./p1";
@@ -44,6 +45,7 @@ import type {
   Note,
   Day,
   Contact,
+  DirectoryContact,
   Task,
   Filters,
 } from "@/lib/model";
@@ -57,6 +59,9 @@ import {
   periodLabel,
 } from "@/lib/format";
 import { Button } from "./ui/button";
+import { Modal } from "./ui/dialog";
+import { SelectionTable } from "./selection-table";
+import { contactName, uniqueContacts } from "@/lib/contacts";
 import { Markdown } from "./markdown";
 import { RichEditor } from "./rich-editor";
 import { Budget } from "./p2";
@@ -396,6 +401,7 @@ export function Detail({
           busy={busy}
           run={saveContent}
           dirty={(v, d) => areaDirty("contacts", v, d)}
+          directory={shared ? undefined : s.contactDirectory}
         />
       )}
       {tab === "finance" && shared && shared.finance}
@@ -699,7 +705,10 @@ function Notes({
     </section>
   );
 }
-function Itinerary({ j, edit, busy, run, dirty }: ContentProps) {
+function Itinerary({ j, edit: canEdit, busy, run, dirty }: ContentProps) {
+  const [editing, setEditing] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const edit = canEdit && editing;
   const [days, setDays] = useState<Day[]>(structuredClone(j.days)),
     [changed, setChanged] = useState(false);
   const sensors = useSensors(
@@ -782,6 +791,46 @@ function Itinerary({ j, edit, busy, run, dirty }: ContentProps) {
           <p>Day-stacked planning · Name & Description</p>
         </div>
         <div className="row-actions">
+          {selectedItems.length > 0 && (
+            <>
+              <small>{selectedItems.length} item dipilih</small>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy || !canEdit}
+                onClick={() => {
+                  if (
+                    !confirm(
+                      `Hapus ${selectedItems.length} item itinerary terpilih?`,
+                    )
+                  )
+                    return;
+                  update(
+                    days.map((day) => ({
+                      ...day,
+                      items: day.items.filter(
+                        (item) => !selectedItems.includes(item.id),
+                      ),
+                    })),
+                  );
+                  setEditing(true);
+                  setSelectedItems([]);
+                }}
+              >
+                Hapus item terpilih
+              </Button>
+            </>
+          )}
+          {canEdit && !editing && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => setEditing(true)}
+            >
+              Edit itinerary
+            </Button>
+          )}
           {edit && (
             <>
               <Button
@@ -810,6 +859,7 @@ function Itinerary({ j, edit, busy, run, dirty }: ContentProps) {
                     })
                   ) {
                     setChanged(false);
+                    setEditing(false);
                     dirty(false);
                   }
                 }}
@@ -818,6 +868,20 @@ function Itinerary({ j, edit, busy, run, dirty }: ContentProps) {
                 Simpan itinerary
               </Button>
               {changed && <CopyChanges value={days} />}
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={busy}
+                onClick={() => {
+                  if (changed && !confirm("Buang perubahan itinerary?")) return;
+                  setDays(structuredClone(j.days));
+                  setChanged(false);
+                  setEditing(false);
+                  dirty(false);
+                }}
+              >
+                Batal
+              </Button>
             </>
           )}
         </div>
@@ -838,6 +902,8 @@ function Itinerary({ j, edit, busy, run, dirty }: ContentProps) {
             j={j}
             edit={edit}
             days={days}
+            selectedItems={selectedItems}
+            onSelectItems={setSelectedItems}
             onTitle={(v) =>
               update(
                 days.map((d) => (d.id === day.id ? { ...d, title: v } : d)),
@@ -904,6 +970,8 @@ function DaySection({
   onItem,
   onMove,
   onRemove,
+  selectedItems,
+  onSelectItems,
 }: {
   day: Day;
   index: number;
@@ -916,6 +984,8 @@ function DaySection({
   onItem: (d: string, i: string, k: "name" | "description", v: string) => void;
   onMove: (id: string, dest: string, pos: number) => void;
   onRemove: (i: string) => void;
+  selectedItems: string[];
+  onSelectItems: (ids: string[]) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: day.id });
   const dayDate = j.start
@@ -958,7 +1028,31 @@ function DaySection({
         )}
       </header>
       <div className="itinerary-columns">
-        <b>Name</b>
+        <b>
+          <input
+            type="checkbox"
+            aria-label={`Pilih semua item Day ${index + 1}`}
+            checked={
+              day.items.length > 0 &&
+              day.items.every((i) => selectedItems.includes(i.id))
+            }
+            onChange={(e) =>
+              onSelectItems(
+                e.target.checked
+                  ? [
+                      ...new Set([
+                        ...selectedItems,
+                        ...day.items.map((i) => i.id),
+                      ]),
+                    ]
+                  : selectedItems.filter(
+                      (id) => !day.items.some((i) => i.id === id),
+                    ),
+              )
+            }
+          />{" "}
+          Name
+        </b>
         <b>Description</b>
       </div>
       {day.items.map((i, position) => (
@@ -969,6 +1063,14 @@ function DaySection({
           days={days}
           position={position}
           edit={edit}
+          selected={selectedItems.includes(i.id)}
+          onSelect={(value) =>
+            onSelectItems(
+              value
+                ? [...selectedItems, i.id]
+                : selectedItems.filter((id) => id !== i.id),
+            )
+          }
           onChange={(key, v) => onItem(day.id, i.id, key, v)}
           onMove={onMove}
           onRemove={() => onRemove(i.id)}
@@ -995,6 +1097,8 @@ function ItineraryRow({
   onChange,
   onMove,
   onRemove,
+  selected,
+  onSelect,
 }: {
   item: Day["items"][number];
   day: Day;
@@ -1004,6 +1108,8 @@ function ItineraryRow({
   onChange: (k: "name" | "description", v: string) => void;
   onMove: (id: string, dest: string, pos: number) => void;
   onRemove: () => void;
+  selected: boolean;
+  onSelect: (value: boolean) => void;
 }) {
   const drag = useDraggable({ id: item.id, disabled: !edit }),
     drop = useDroppable({ id: item.id });
@@ -1023,6 +1129,13 @@ function ItineraryRow({
       }
     >
       <div className="item-name">
+        <input
+          className="row-select"
+          type="checkbox"
+          aria-label={`Pilih aktivitas ${item.name}`}
+          checked={selected}
+          onChange={(e) => onSelect(e.target.checked)}
+        />
         {edit && (
           <button
             className="drag-icon"
@@ -1102,12 +1215,26 @@ export function Contacts({
   dirty,
   sources,
   onSave,
+  directory,
+  onRowEdit,
+  initialEditing = false,
+  single = false,
+  onBulkDelete,
 }: Omit<ContentProps, "j"> & {
   j: Pick<Journey, "id" | "version" | "contacts">;
-  sources?: Record<string, { label: string; url?: string }>;
+  sources?: Record<string, { label: string; url?: string }[]>;
   onSave?: (contacts: Contact[]) => Promise<boolean>;
+  directory?: DirectoryContact[];
+  onRowEdit?: (contact: Contact) => void;
+  initialEditing?: boolean;
+  single?: boolean;
+  onBulkDelete?: (ids: string[]) => Promise<boolean>;
 }) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(initialEditing);
+  const [lookup, setLookup] = useState("");
+  const [choosing, setChoosing] = useState(false);
+  const [lookupId, setLookupId] = useState("");
+  const [newIds, setNewIds] = useState<string[]>([]);
   const edit = canEdit && editing;
   const [contacts, setContacts] = useState<Contact[]>(
       structuredClone(j.contacts),
@@ -1116,11 +1243,11 @@ export function Contacts({
   useEffect(() => {
     setContacts(structuredClone(j.contacts));
     setChanged(false);
-    setEditing(false);
+    setEditing(initialEditing);
     dirty(false);
   }, [j.version]);
   function update(next: Contact[]) {
-    setContacts(next);
+    setContacts(uniqueContacts(next));
     setChanged(true);
     dirty(true, { contacts: next });
   }
@@ -1146,30 +1273,38 @@ export function Contacts({
           )}
           {edit && (
             <>
+              {!single && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const id = crypto.randomUUID();
+                    setNewIds((prev) => [...prev, id]);
+                    setContacts([
+                      ...contacts,
+                      {
+                        id,
+                        name: "",
+                        role: "",
+                        organization: "",
+                        phone: "",
+                        email: "",
+                        note: "",
+                      },
+                    ]);
+                    setChanged(true);
+                    dirty(true);
+                  }}
+                >
+                  <Plus size={15} />
+                  Contact
+                </Button>
+              )}
               <Button
                 size="sm"
-                variant="outline"
-                onClick={() =>
-                  update([
-                    ...contacts,
-                    {
-                      id: crypto.randomUUID(),
-                      name: "Kontak baru",
-                      role: "",
-                      organization: "",
-                      phone: "",
-                      email: "",
-                      note: "",
-                    },
-                  ])
+                disabled={
+                  !changed || busy || contacts.some((c) => !c.name.trim())
                 }
-              >
-                <Plus size={15} />
-                Contact
-              </Button>
-              <Button
-                size="sm"
-                disabled={!changed || busy}
                 onClick={async () => {
                   if (
                     await (onSave
@@ -1209,113 +1344,302 @@ export function Contacts({
           )}
         </div>
       </div>
-      <div className="table-wrap">
-        <table className="contacts-table">
-          <thead>
-            <tr>
-              <th>Nama</th>
-              <th>Telepon / Email</th>
-              <th>Note</th>
-              {sources && <th>Sumber</th>}
-              {edit && <th />}
-            </tr>
-          </thead>
-          <tbody>
-            {contacts.map((c) => {
-              const field = (
-                key: "name" | "phone" | "email" | "note",
-                value: string,
-              ) =>
-                update(
-                  contacts.map((x) =>
-                    x.id === c.id ? { ...x, [key]: value } : x,
-                  ),
-                );
-              return (
-                <tr key={c.id}>
-                  <td>
-                    {edit ? (
-                      <input
-                        aria-label="Nama contact"
-                        maxLength={200}
-                        value={c.name}
-                        onChange={(e) => field("name", e.target.value)}
-                      />
-                    ) : (
-                      <b>{c.name}</b>
-                    )}
-                  </td>
-                  <td>
-                    {edit ? (
-                      <div className="contact-channels">
-                        <input
-                          aria-label="Telepon contact"
-                          placeholder="Telepon"
-                          maxLength={80}
-                          value={c.phone}
-                          onChange={(e) => field("phone", e.target.value)}
-                        />
-                        <input
-                          aria-label="Email contact"
-                          placeholder="Email"
-                          type="email"
-                          value={c.email}
-                          onChange={(e) => field("email", e.target.value)}
-                        />
-                      </div>
-                    ) : (
-                      <div className="contact-channels">
-                        {c.phone && <span>{c.phone}</span>}
-                        {c.email && <span>{c.email}</span>}
-                        {!c.phone && !c.email && "-"}
-                      </div>
-                    )}
-                  </td>
-                  <td>
-                    {edit ? (
-                      <textarea
-                        aria-label="Note contact"
-                        rows={2}
-                        maxLength={5000}
-                        value={c.note}
-                        onChange={(e) => field("note", e.target.value)}
-                      />
-                    ) : (
-                      <PlainNote body={c.note} />
-                    )}
-                  </td>
-                  {sources && (
+      {edit && choosing && directory && (
+        <Modal
+          open
+          title="Cari kontak tersimpan"
+          onClose={() => setChoosing(false)}
+        >
+          <div className="contact-picker">
+            <label>
+              Cari kontak database
+              <input
+                aria-label="Cari kontak database"
+                value={lookup}
+                onChange={(e) => setLookup(e.target.value)}
+                placeholder="Nama, email, atau telepon…"
+              />
+            </label>
+            <div className="contact-picker-results">
+              {directory
+                .filter(
+                  (c) =>
+                    !contacts.some(
+                      (x) =>
+                        x.id !== lookupId &&
+                        contactName(x.name) === contactName(c.name),
+                    ),
+                )
+                .filter((c) =>
+                  [c.name, c.email, c.phone]
+                    .join(" ")
+                    .toLowerCase()
+                    .includes(lookup.toLowerCase()),
+                )
+                .map((c) => (
+                  <button
+                    type="button"
+                    key={c.id}
+                    disabled={busy}
+                    onClick={() => {
+                      const {
+                        id,
+                        name,
+                        phone,
+                        email,
+                        note,
+                        role,
+                        organization,
+                      } = c;
+                      update(
+                        contacts.map((x) =>
+                          x.id === lookupId
+                            ? {
+                                id,
+                                name,
+                                phone,
+                                email,
+                                note,
+                                role,
+                                organization,
+                              }
+                            : x,
+                        ),
+                      );
+                      setChoosing(false);
+                      setLookup("");
+                    }}
+                  >
+                    <b>{c.name}</b>
+                    <small>{c.email || c.phone || "Tanpa kanal kontak"}</small>
+                  </button>
+                ))}
+            </div>
+            <small>
+              Pakai kontak yang sama; tidak membuat baris baru di direktori.
+            </small>
+            {!directory.some(
+              (c) => contactName(c.name) === contactName(lookup),
+            ) && (
+              <Button
+                type="button"
+                disabled={!lookup.trim()}
+                onClick={() => {
+                  setContacts(
+                    contacts.map((c) =>
+                      c.id === lookupId ? { ...c, name: lookup.trim() } : c,
+                    ),
+                  );
+                  setChanged(true);
+                  dirty(true);
+                  setChoosing(false);
+                }}
+              >
+                Gunakan nama baru “{lookup.trim()}”
+              </Button>
+            )}
+          </div>
+        </Modal>
+      )}
+      {single && edit && contacts[0] ? (
+        <div className="form-grid contact-edit-fields">
+          {(
+            [
+              ["name", "Nama"],
+              ["phone", "Telepon"],
+              ["email", "Email"],
+              ["role", "Peran"],
+              ["organization", "Organisasi"],
+            ] as const
+          ).map(([key, label]) => (
+            <label key={key}>
+              {label}
+              <input
+                aria-label={`${label} contact`}
+                type={key === "email" ? "email" : "text"}
+                value={contacts[0][key]}
+                maxLength={key === "phone" ? 80 : key === "email" ? 320 : 200}
+                disabled={busy}
+                onChange={(e) =>
+                  update([{ ...contacts[0], [key]: e.target.value }])
+                }
+              />
+            </label>
+          ))}
+          <label className="contact-edit-note">
+            Note
+            <textarea
+              aria-label="Note contact"
+              rows={4}
+              maxLength={5000}
+              disabled={busy}
+              value={contacts[0].note}
+              onChange={(e) =>
+                update([{ ...contacts[0], note: e.target.value }])
+              }
+            />
+          </label>
+        </div>
+      ) : (
+        <div className="table-wrap">
+          <SelectionTable
+            className="contacts-table"
+            onDelete={
+              onBulkDelete ||
+              (edit && !single
+                ? async (ids) => {
+                    update(contacts.filter((c) => !ids.includes(c.id)));
+                    return true;
+                  }
+                : undefined)
+            }
+          >
+            <thead>
+              <tr>
+                <th>Nama</th>
+                <th>Telepon / Email</th>
+                <th>Note</th>
+                {sources && <th>Sumber</th>}
+                {((edit && !single) || onRowEdit) && (
+                  <th aria-label="Aksi contact" />
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {contacts.map((c) => {
+                const field = (
+                  key: "name" | "phone" | "email" | "note",
+                  value: string,
+                ) =>
+                  update(
+                    contacts.map((x) =>
+                      x.id === c.id ? { ...x, [key]: value } : x,
+                    ),
+                  );
+                return (
+                  <tr key={c.id}>
                     <td>
-                      {sources[c.id]?.url ? (
-                        <a className="table-link" href={sources[c.id].url}>
-                          {sources[c.id].label}
-                        </a>
+                      {edit ? (
+                        <input
+                          aria-label="Nama contact"
+                          maxLength={200}
+                          value={c.name}
+                          onChange={(e) => {
+                            if (
+                              directory &&
+                              newIds.includes(c.id) &&
+                              e.target.value.trim()
+                            ) {
+                              setLookupId(c.id);
+                              setLookup(e.target.value);
+                              setChoosing(true);
+                            } else field("name", e.target.value);
+                          }}
+                        />
                       ) : (
-                        sources[c.id]?.label || "Internal"
+                        <b>{c.name}</b>
                       )}
                     </td>
-                  )}
-                  {edit && (
                     <td>
-                      <button
-                        className="icon-button"
-                        aria-label={`Hapus ${c.name}`}
-                        disabled={busy}
-                        onClick={() => {
-                          if (confirm("Hapus contact ini?"))
-                            update(contacts.filter((x) => x.id !== c.id));
-                        }}
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {edit ? (
+                        <div className="contact-channels">
+                          <input
+                            aria-label="Telepon contact"
+                            placeholder="Telepon"
+                            maxLength={80}
+                            value={c.phone}
+                            onChange={(e) => field("phone", e.target.value)}
+                          />
+                          <input
+                            aria-label="Email contact"
+                            placeholder="Email"
+                            type="email"
+                            value={c.email}
+                            onChange={(e) => field("email", e.target.value)}
+                          />
+                        </div>
+                      ) : (
+                        <div className="contact-channels">
+                          {c.phone && <span>{c.phone}</span>}
+                          {c.email && <span>{c.email}</span>}
+                          {!c.phone && !c.email && "-"}
+                        </div>
+                      )}
                     </td>
-                  )}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                    <td>
+                      {edit ? (
+                        <textarea
+                          aria-label="Note contact"
+                          rows={2}
+                          maxLength={5000}
+                          value={c.note}
+                          onChange={(e) => field("note", e.target.value)}
+                        />
+                      ) : (
+                        <PlainNote body={c.note} />
+                      )}
+                    </td>
+                    {sources && (
+                      <td>
+                        <span className="contact-sources">
+                          {(sources[c.id] || [{ label: "Internal" }])
+                            .slice(0, 5)
+                            .map((source, index) => (
+                              <span key={source.url || source.label}>
+                                {index > 0 && ", "}
+                                {source.url ? (
+                                  <a
+                                    className="tag neutral table-link"
+                                    href={source.url}
+                                  >
+                                    {source.label}
+                                  </a>
+                                ) : (
+                                  <span className="tag neutral">
+                                    {source.label}
+                                  </span>
+                                )}
+                              </span>
+                            ))}
+                        </span>
+                      </td>
+                    )}
+                    {edit && !single && (
+                      <td>
+                        <button
+                          className="icon-button"
+                          aria-label={`Hapus ${c.name}`}
+                          disabled={busy}
+                          onClick={() => {
+                            if (confirm("Hapus contact ini?"))
+                              update(contacts.filter((x) => x.id !== c.id));
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    )}
+                    {onRowEdit && (
+                      <td>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={busy}
+                          onClick={() => onRowEdit(c)}
+                          aria-label={`Edit contact ${c.name}`}
+                          title={`Edit ${c.name}`}
+                        >
+                          <Pencil size={15} />
+                        </Button>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </SelectionTable>
+        </div>
+      )}
       {!contacts.length && (
         <div className="empty-state small">
           <Users size={23} />
@@ -1443,6 +1767,7 @@ function TripFinance({
           <Corrections s={data} run={run} busy={busy} />
           <Ledger
             s={data}
+            run={run}
             canEdit={can(s.user, "finance", true)}
             onEdit={open}
           />

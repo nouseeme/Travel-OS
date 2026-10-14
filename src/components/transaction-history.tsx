@@ -1,4 +1,5 @@
 "use client";
+import { SelectionTable } from "./selection-table";
 import { useEffect, useState } from "react";
 import type { Audit, Snapshot, Transaction } from "@/lib/model";
 import { localTimestamp, localTimezone } from "@/lib/time";
@@ -107,7 +108,7 @@ export function TransactionHistory({
         </div>
       ) : (
         <div className="table-wrap">
-          <table>
+          <SelectionTable>
             <thead>
               <tr>
                 <th>Tanggal</th>
@@ -208,7 +209,7 @@ export function TransactionHistory({
                   );
                 })}
             </tbody>
-          </table>
+          </SelectionTable>
         </div>
       )}
     </section>
