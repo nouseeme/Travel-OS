@@ -304,7 +304,7 @@ export function Dashboard() {
     sales: "Sales CRM",
     trips: "Trips",
     finance: "Finance",
-    docs: "Internal Docs",
+    docs: "Internal",
     people: "People",
     configuration: "Configuration",
     audit: "Audit history",
@@ -341,7 +341,7 @@ export function Dashboard() {
             { id: "sales", label: "Sales CRM", icon: Handshake },
             { id: "trips", label: "Trips", icon: Map },
             { id: "finance", label: "Finance", icon: Wallet },
-            { id: "docs", label: "Internal Docs", icon: FileText },
+            { id: "docs", label: "Internal", icon: FileText },
           ]
             .filter(
               (n) => n.id === "home" || (s && can(s.user, n.id as Module)),
@@ -453,7 +453,7 @@ export function Dashboard() {
                         sales: "Sales CRM",
                         trips: "Trips",
                         finance: "Finance",
-                        docs: "Internal Docs",
+                        docs: "Internal",
                       }[m],
                       url: "/" + m,
                     })),
@@ -644,7 +644,7 @@ export function Dashboard() {
                             }
                           >
                             <Plus size={16} />
-                            Internal task
+                            Task pribadi
                           </Button>
                         )}
                         {view === "sales" && (
@@ -780,41 +780,41 @@ export function Dashboard() {
                             label="Perlu dikerjakan"
                             value={String(s.taskCounts.Assigned || 0)}
                             icon={LayoutGrid}
-                            text="Assigned tasks"
+                            text="Tasks assigned"
                           />
                           <Stat
-                            label="Sedang berjalan"
+                            label="Sedang dikerjakan"
                             value={String(s.taskCounts.Doing || 0)}
                             icon={Clock3}
-                            text="Satu langkah lebih dekat"
+                            text="Tasks doing"
                           />
                           <Stat
                             label="Selesai"
                             value={String(s.taskCounts.Done || 0)}
                             icon={CheckCircle2}
-                            text="Pekerjaan yang dituntaskan"
+                            text="Tasks done"
                           />
                           <Stat
                             label="Perlu perhatian"
-                            value={String(
-                              s.tasks.filter(
-                                (t) => deadline(t, s.today) === "Overdue",
-                              ).length,
-                            )}
+                              value={String(
+                                s.tasks.filter((t) =>
+                                  ["Overdue", "Due today", "Due soon"].includes(deadline(t, s.today)),
+                                ).length,
+                              )}
                             icon={CalendarDays}
-                            text="Deadline sudah terlewat"
+                            text="Deadline sudah dekat / terlewat"
                             warn
                           />
                         </div>
                         <div className="section-toolbar">
                           <div>
                             <h2>
-                              My Tasks{" "}
+                              Tasks Overview{" "}
                               <span className="subtle-count">
                                 {s.tasks.length}
                               </span>
                             </h2>
-                            <p>Pekerjaan dari Internal, Sales, dan Trips.</p>
+                            <p>Dikumpulkan dari Internal, Sales, dan Trips.</p>
                           </div>
                           {s.user.role === "admin" && (
                             <label className="inline-label">
@@ -897,11 +897,6 @@ export function Dashboard() {
                             Load more tasks
                           </Button>
                         )}
-                        <div className="home-foot">
-                          <span className="status-dot tone-1" /> Semua task
-                          menggunakan sumber data yang sama. Perubahan langsung
-                          tersedia di parent.
-                        </div>
                       </>
                     )}
                     {(view === "sales" || view === "trips") && (
@@ -1613,13 +1608,13 @@ export function CashStats({ s, period }: { s: Snapshot; period: string }) {
       </div>
       <div className="cash-grid">
         <Stat
-          label="Cash receipts"
+          label="Income / Receipts"
           value={moneyLabel(s.totals.moneyIn)}
           icon={ArrowDownLeft}
           text="Kas diterima"
         />
         <Stat
-          label="Cash payments"
+          label="Expenses / Payments"
           value={moneyLabel(s.totals.moneyOut)}
           icon={ArrowUpRight}
           text="Kas dibayarkan"

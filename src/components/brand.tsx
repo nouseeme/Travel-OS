@@ -30,7 +30,7 @@ export function CompanyIdentity({
         <div>
           <b>Egimu Travel</b>
           <small>
-            {large ? "Ruang kerja operasional perjalanan" : "Ruang kerja tim"}
+            {large ? "Ruang kerja operasional perjalanan" : "Team workspace"}
           </small>
         </div>
       )}
