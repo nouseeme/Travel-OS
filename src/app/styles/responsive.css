@@ -20,6 +20,9 @@
   }
 }
 @media (max-width: 1100px) {
+  .board-hint {
+    display: block;
+  }
   :root {
     --sidebar-width: 224px;
     --page-gutter: 24px;
@@ -134,6 +137,9 @@
   }
 }
 @media (max-width: 650px) {
+  .table-hint {
+    display: block;
+  }
   .mobile-shade {
     display: block;
     position: fixed;
@@ -161,7 +167,8 @@
     gap: 7px;
   }
   .facts-grid {
-    gap: 19px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
   }
   .panel-heading {
     gap: 10px;
@@ -178,9 +185,6 @@
   }
   .task-row-main {
     flex-basis: 70%;
-  }
-  .task-row select {
-    margin-left: 25px;
   }
   .note-list {
     flex-direction: row;
@@ -294,7 +298,6 @@
     --page-gutter: 16px;
   }
   .sidebar {
-    transition: transform 0.2s;
     width: min(280px, 85vw);
     transform: translateX(-100%);
     visibility: hidden;
@@ -322,12 +325,12 @@
     flex-basis: auto;
   }
   .kanban {
-    grid-template-columns: 1fr;
+    grid-template-columns: none;
     grid-auto-columns: min(86vw, 340px);
     gap: var(--space-3);
   }
   .kanban.four {
-    grid-template-columns: 1fr;
+    grid-template-columns: none;
     grid-auto-columns: min(86vw, 340px);
   }
   .summary-grid {
@@ -350,8 +353,6 @@
     padding: var(--space-4);
   }
   .itinerary-columns {
-    grid-template-columns: 38% 62%;
-    padding: var(--space-3);
     display: none;
   }
   .itinerary-row {
@@ -425,6 +426,9 @@
   textarea {
     font-size: var(--text-base);
   }
+  :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
+    font-size: var(--text-base);
+  }
 }
 @media (max-width: 640px) {
   .p1-metrics {
@@ -441,9 +445,6 @@
   .shared-trip-header {
     padding: var(--space-3) var(--space-4);
     gap: var(--space-3);
-  }
-  .shared-trip-header .company-identity {
-    display: none;
   }
   .workflow-toast {
     bottom: 16px;

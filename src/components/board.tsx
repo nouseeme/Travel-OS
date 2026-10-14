@@ -323,7 +323,20 @@ export function Board({
   }
   return (
     <DndContext sensors={sensors} onDragEnd={dragEnd}>
-      <div className={"kanban " + (columns.length === 4 ? "four" : "")}>
+      <p className="board-hint">
+        Geser papan untuk melihat tahap lainnya. Status juga bisa diubah dari
+        menu pada kartu.
+      </p>
+      <div
+        className={"kanban " + (columns.length === 4 ? "four" : "")}
+        role="region"
+        aria-label={
+          mode === "tasks"
+            ? "Papan tugas — geser untuk melihat status lain"
+            : "Papan perjalanan — geser untuk melihat tahap lain"
+        }
+        tabIndex={0}
+      >
         {columns.map((col, i) => {
           const rows =
             mode === "tasks"

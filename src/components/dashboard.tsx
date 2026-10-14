@@ -62,6 +62,7 @@ import { TransactionDetail } from "./transaction-detail";
 import { Toast } from "./toast";
 import { SubmissionReview } from "./submission-review";
 import { Corrections } from "./corrections";
+import { CashOverview } from "./cash-overview";
 import { localTimezone, dateInZone } from "@/lib/time";
 import {
   Calendar,
@@ -312,6 +313,9 @@ export function Dashboard() {
   const settingsDenied = parts[0] === "settings" && s?.user.role === "member";
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#workspace-main">
+        Langsung ke konten
+      </a>
       <aside
         id="workspace-sidebar"
         aria-label="Navigasi workspace"
@@ -516,7 +520,7 @@ export function Dashboard() {
             </button>
           </div>
         </header>
-        <main className="workspace-content">
+        <main id="workspace-main" tabIndex={-1} className="workspace-content">
           {settingsDenied && (
             <Empty text="Team & Settings hanya tersedia untuk admin." />
           )}
@@ -1196,53 +1200,7 @@ export function Dashboard() {
                             />
                           </>
                         ) : (
-                          <>
-                            <div className="section-toolbar">
-                              <h2>Hasil kas per Trip</h2>
-                              <span className="pill">
-                                Filter periode yang sama
-                              </span>
-                            </div>
-                            <div className="table-wrap">
-                              <table>
-                                <thead>
-                                  <tr>
-                                    <th>Trip / Context</th>
-                                    <th>Income / Receipts</th>
-                                    <th>Expense / Payments</th>
-                                    <th>Hasil kas</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {s.cashRows.map((r) => (
-                                    <tr key={r.id}>
-                                      <td>{r.name}</td>
-                                      <td>{moneyLabel(r.moneyIn)}</td>
-                                      <td>{moneyLabel(r.moneyOut)}</td>
-                                      <td
-                                        className={
-                                          BigInt(r.net) < 0
-                                            ? "negative"
-                                            : "positive"
-                                        }
-                                      >
-                                        {moneyLabel(r.net)}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                              {!s.cashRows.length && (
-                                <Empty text="Belum ada transaksi pada periode ini." />
-                              )}
-                            </div>
-                            <div className="notice">
-                              Hasil kas adalah Income / Receipts − Expense /
-                              Payments. Quoted price tidak dihitung; modal dan
-                              pinjaman termasuk kas. Angka ini bukan bank
-                              balance atau accrual profit.
-                            </div>
-                          </>
+                          <CashOverview rows={s.cashRows} />
                         )}
                       </>
                     )}

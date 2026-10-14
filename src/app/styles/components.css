@@ -201,15 +201,15 @@
 }
 .tag.internal {
   background: #f3efe6;
-  color: var(--muted);
+  color: #795f43;
 }
 .tag.lead {
   background: #f5eee3;
-  color: var(--muted);
+  color: #806231;
 }
 .tag.trip {
   background: #e8f2ec;
-  color: var(--muted);
+  color: #356b4e;
 }
 .tag.neutral {
   background: #edf0e9;
@@ -236,11 +236,11 @@
 }
 .overdue {
   background: #f9eee4;
-  color: #c18f67;
+  color: #85512a;
 }
 .soon {
   background: #f8f3df;
-  color: #b49d5b;
+  color: #756022;
 }
 .app-footer .status-dot {
   margin-left: 5px;
@@ -1980,7 +1980,6 @@
   border: 1px solid transparent;
   font-weight: 600;
   line-height: 1.5;
-  transition: background 0.15s;
   font-size: var(--text-sm);
   min-height: 44px;
   padding: 10px var(--space-4);
@@ -2410,7 +2409,8 @@
   font-size: var(--text-sm);
 }
 .finance-filters {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
   flex-wrap: wrap;
   background: #f1f4ec;
   border: 1px solid var(--line);
@@ -2944,4 +2944,49 @@
 }
 .skip-link:focus {
   transform: translateY(0);
+}
+
+.cash-overview-table {
+  min-width: 720px;
+}
+.cash-overview-table th[scope="row"] {
+  min-width: 220px;
+  max-width: 320px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  padding: var(--space-4);
+}
+.cash-overview-table th:not(:first-child),
+.cash-overview-table td {
+  text-align: right;
+}
+
+.board-hint,
+.table-hint {
+  display: none;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  line-height: 1.7;
+  margin: 0 0 var(--space-3);
+}
+
+.panel.itinerary-day {
+  padding: 0;
+}
+
+.docs-table table {
+  min-width: 680px;
+}
+.docs-table td:first-child {
+  min-width: 240px;
+}
+.docs-table td:nth-child(2) {
+  white-space: nowrap;
+}
+.docs-table td:nth-child(3) {
+  min-width: 180px;
 }

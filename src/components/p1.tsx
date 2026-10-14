@@ -95,7 +95,11 @@ export function Calendar({
   return (
     <section className="p1-panel">
       <div className="section-toolbar">
-        <Button variant="outline" onClick={() => shift(-1)}>
+        <Button
+          variant="outline"
+          aria-label="Bulan sebelumnya"
+          onClick={() => shift(-1)}
+        >
           ←
         </Button>
         <label>
@@ -108,7 +112,11 @@ export function Calendar({
             }}
           />
         </label>
-        <Button variant="outline" onClick={() => shift(1)}>
+        <Button
+          variant="outline"
+          aria-label="Bulan berikutnya"
+          onClick={() => shift(1)}
+        >
           →
         </Button>
       </div>
@@ -117,35 +125,45 @@ export function Calendar({
         Rentang perjalanan termasuk tanggal mulai dan selesai. Klik untuk
         membuka Trip.
       </p>
-      <div className="calendar-grid">
-        {["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"].map((d) => (
-          <b key={d}>{d}</b>
-        ))}
-        {Array.from({ length: offset }, (_, i) => (
-          <div className="calendar-day blank" key={"blank" + i} />
-        ))}
-        {Array.from({ length: last }, (_, i) => {
-          const date = month + "-" + String(i + 1).padStart(2, "0");
-          return (
-            <div
-              className={"calendar-day " + (date === s.today ? "today" : "")}
-              key={date}
-            >
-              <b>{i + 1}</b>
-              {rows
-                .filter((r: any) => r.start <= date && r.end >= date)
-                .map((r: any) => (
-                  <button key={r.id} onClick={() => navigate("/trips/" + r.id)}>
-                    {r.name}
-                    <small>
-                      {s.tripStages?.find((st) => st.id === r.stage)?.label ||
-                        r.stage}
-                    </small>
-                  </button>
-                ))}
-            </div>
-          );
-        })}
+      <div
+        className="calendar-scroll"
+        role="region"
+        aria-label="Kalender perjalanan"
+        tabIndex={0}
+      >
+        <div className="calendar-grid">
+          {["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"].map((d) => (
+            <b key={d}>{d}</b>
+          ))}
+          {Array.from({ length: offset }, (_, i) => (
+            <div className="calendar-day blank" key={"blank" + i} />
+          ))}
+          {Array.from({ length: last }, (_, i) => {
+            const date = month + "-" + String(i + 1).padStart(2, "0");
+            return (
+              <div
+                className={"calendar-day " + (date === s.today ? "today" : "")}
+                key={date}
+              >
+                <b>{i + 1}</b>
+                {rows
+                  .filter((r: any) => r.start <= date && r.end >= date)
+                  .map((r: any) => (
+                    <button
+                      key={r.id}
+                      onClick={() => navigate("/trips/" + r.id)}
+                    >
+                      {r.name}
+                      <small>
+                        {s.tripStages?.find((st) => st.id === r.stage)?.label ||
+                          r.stage}
+                      </small>
+                    </button>
+                  ))}
+              </div>
+            );
+          })}
+        </div>
       </div>
       {!state.loading && !state.error && !rows.length && (
         <p>Belum ada Trip pada bulan ini.</p>

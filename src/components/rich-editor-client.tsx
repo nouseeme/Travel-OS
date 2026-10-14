@@ -216,7 +216,7 @@ export default function RichEditorClient({
           </label>
           <button
             type="button"
-            className="button outline"
+            className="button button-outline"
             disabled={disabled}
             onClick={() => {
               if (!safeEditorLink(href)) {

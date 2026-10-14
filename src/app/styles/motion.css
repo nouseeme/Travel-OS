@@ -1,53 +1,118 @@
 /* Motion only changes opacity, transform or paint; never layout dimensions.
    Drag transforms belong to dnd-kit and must not be animated here. */
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @keyframes fade-out {
-  to { opacity: 0; }
+  to {
+    opacity: 0;
+  }
 }
 @keyframes surface-in {
-  from { opacity: 0; translate: 0 6px; }
-  to { opacity: 1; translate: 0 0; }
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
 }
 @keyframes dialog-in {
-  from { opacity: 0; scale: 0.98; }
-  to { opacity: 1; scale: 1; }
+  from {
+    opacity: 0;
+    scale: 0.98;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
 }
 @media (prefers-reduced-motion: no-preference) {
-  :where(.button, .icon-button, .round-button, .sidebar nav button,
-    .view-tabs button, .detail-tabs button, .configuration-tabs button,
-    .note-list button, .rich-editor-toolbar button, .calendar-day button) {
-    transition: background-color var(--motion-fast) ease,
-      border-color var(--motion-fast) ease, color var(--motion-fast) ease,
-      box-shadow var(--motion-fast) ease, translate var(--motion-fast) var(--ease-out);
+  :where(
+    .button,
+    .icon-button,
+    .round-button,
+    .sidebar nav button,
+    .view-tabs button,
+    .detail-tabs button,
+    .configuration-tabs button,
+    .note-list button,
+    .rich-editor-toolbar button,
+    .calendar-day button
+  ) {
+    transition:
+      background-color var(--motion-fast) ease,
+      border-color var(--motion-fast) ease,
+      color var(--motion-fast) ease,
+      box-shadow var(--motion-fast) ease,
+      translate var(--motion-fast) var(--ease-out);
   }
   :where(input, select, textarea, .money-input, .search-box, .rich-editor) {
-    transition: border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
+    transition:
+      border-color var(--motion-fast) ease,
+      box-shadow var(--motion-fast) ease;
   }
   .board-card {
-    transition: border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
+    transition:
+      border-color var(--motion-fast) ease,
+      box-shadow var(--motion-fast) ease;
   }
-  .clickable-row { transition: background-color var(--motion-fast) ease; }
-  :where(.button, .icon-button, .round-button):active:not(:disabled) { translate: 0 1px; }
-  .dialog-overlay[data-state="open"] { animation: fade-in var(--motion-normal) ease both; }
-  .dialog-overlay[data-state="closed"] { animation: fade-out var(--motion-fast) ease both; }
-  .dialog-content[data-state="open"] { animation: dialog-in var(--motion-normal) var(--ease-out) both; }
-  .dialog-content[data-state="closed"] { animation: fade-out var(--motion-fast) ease both; }
-  .success-toast, .workflow-toast, .breadcrumb-menu, .error-box { animation: surface-in var(--motion-normal) var(--ease-out) both; }
-  .refresh-indicator { animation: fade-in var(--motion-normal) ease both; }
-  .sidebar { transition: transform var(--motion-normal) var(--ease-out), visibility var(--motion-normal); }
+  .clickable-row {
+    transition: background-color var(--motion-fast) ease;
+  }
+  :where(.button, .icon-button, .round-button):active:not(:disabled) {
+    translate: 0 1px;
+  }
+  .dialog-overlay[data-state="open"] {
+    animation: fade-in var(--motion-normal) ease both;
+  }
+  .dialog-overlay[data-state="closed"] {
+    animation: fade-out var(--motion-fast) ease both;
+  }
+  .dialog-content[data-state="open"] {
+    animation: dialog-in var(--motion-normal) var(--ease-out) both;
+  }
+  .dialog-content[data-state="closed"] {
+    animation: fade-out var(--motion-fast) ease both;
+  }
+  .success-toast,
+  .workflow-toast,
+  .breadcrumb-menu,
+  .error-box {
+    animation: surface-in var(--motion-normal) var(--ease-out) both;
+  }
+  .refresh-indicator {
+    animation: fade-in var(--motion-normal) ease both;
+  }
+  .sidebar {
+    transition:
+      transform var(--motion-normal) var(--ease-out),
+      visibility var(--motion-normal);
+  }
 }
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .button:not(:disabled):hover { box-shadow: var(--shadow-sm); }
-  .board-card:not(.dragging):hover { box-shadow: var(--shadow-raised); }
+  .button:not(:disabled):hover {
+    box-shadow: var(--shadow-sm);
+  }
+  .board-card:not(.dragging):hover {
+    box-shadow: var(--shadow-raised);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
