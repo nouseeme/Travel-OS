@@ -1,6 +1,7 @@
 import type { Snapshot } from "@/lib/model";
 import { moneyLabel } from "@/lib/format";
 import { minorUnits } from "@/lib/money";
+import { SelectionTable } from "./selection-table";
 
 export function CashOverview({ rows }: { rows: Snapshot["cashRows"] }) {
   return (
