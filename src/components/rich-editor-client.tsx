@@ -51,7 +51,7 @@ export default function RichEditorClient({
       });
   }, [value, editor]);
   useEffect(() => {
-    editor?.setEditable(!disabled);
+    editor?.setEditable(!disabled, false);
   }, [disabled, editor]);
   useEditorState({
     editor,

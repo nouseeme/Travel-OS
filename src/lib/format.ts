@@ -1,5 +1,6 @@
 import type { Task, Person, Module, Filters } from "./model";
 import { localTimezone } from "./time";
+import { formatIDR } from "./money";
 export function periodLabel(f: Filters) {
   return f.from && f.to
     ? `${shortDate(f.from)} — ${shortDate(f.to)}`
@@ -11,10 +12,10 @@ export function periodLabel(f: Filters) {
 }
 export const can = (u: Person, m: Module, edit = false) =>
   u.status === "active" &&
-  (u.role === "admin" ||
-    (edit ? u.privileges[m] === "edit" : u.privileges[m] !== "none"));
-export const moneyLabel = (v: string) =>
-  "Rp " + BigInt(v || "0").toLocaleString("id-ID");
+  (edit
+    ? u.privileges[m] === "edit"
+    : ["view", "edit"].includes(u.privileges[m] || "none"));
+export const moneyLabel = formatIDR;
 export const shortDate = (v: string) =>
   v
     ? new Intl.DateTimeFormat("id-ID", {

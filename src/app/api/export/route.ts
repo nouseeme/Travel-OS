@@ -18,13 +18,16 @@ export async function POST(request: Request) {
     });
     if (snapshot.error) dbError(snapshot.error);
     const s = snapshot.data as Snapshot;
-    return new NextResponse(csv(data as Transaction[], s.journeys, s.people), {
-      headers: {
-        "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="Travel-OS-IDR-${s.today}.csv"`,
-        "Cache-Control": "private, no-store",
+    return new NextResponse(
+      csv(data as Transaction[], s.journeys, s.people, s.categories),
+      {
+        headers: {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": `attachment; filename="Travel-OS-IDR-${s.today}.csv"`,
+          "Cache-Control": "private, no-store",
+        },
       },
-    });
+    );
   } catch (e) {
     return failure(e);
   }

@@ -10,6 +10,7 @@ Selected library: **Tiptap 3.32.0**, with its official Markdown extension and a 
 
 The editor is loaded only on the client. Markdown remains the stored format. Explicit save, unsaved-change protection and permission-restricted read-only rendering remain. Template replacements update the editor without creating a false dirty event. The original green/sage palette and Plus Jakarta Sans are retained.
 Sources checked 14 October 2026:
+
 - https://mdxeditor.dev/editor/docs/overview
 - https://mdxeditor.dev/editor/docs/getting-started
 - https://github.com/mdx-editor/editor
@@ -27,4 +28,3 @@ Sources checked 14 October 2026:
 Implemented: event columns remain `timestamptz` and serialize in UTC. Initial dates, greetings, audit/expiry display, server-produced `today`, analytics day boundaries and transaction future-date validation use a validated browser timezone. Requests without a timezone default to UTC. Existing stored calendar-only dates are unchanged. UI local-day state refreshes on window focus and checks for midnight/timezone changes once per minute.
 
 Required verification: UTC storage round trips; different browser timezones; local/UTC midnight boundaries; daylight-saving transitions; unchanged calendar-only dates; audit/expiry display; matching UI and server date filters/validation.
-

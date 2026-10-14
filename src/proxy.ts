@@ -4,6 +4,8 @@ export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
   if (
     !request.nextUrl.pathname.startsWith("/share/") &&
+    !request.nextUrl.pathname.startsWith("/shared-trip/") &&
+    !request.nextUrl.pathname.startsWith("/api/shared-trip") &&
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
   ) {
@@ -25,7 +27,11 @@ export async function proxy(request: NextRequest) {
     await client.auth.getClaims();
   }
   response.headers.set("Cache-Control", "private, no-store");
-  if (request.nextUrl.pathname.startsWith("/share/"))
+  if (
+    ["/share/", "/shared-trip/", "/api/shared-trip"].some((p) =>
+      request.nextUrl.pathname.startsWith(p),
+    )
+  )
     response.headers.set("Referrer-Policy", "no-referrer");
   return response;
 }

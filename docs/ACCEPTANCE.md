@@ -26,3 +26,17 @@ Local verification: 14 unit/component checks and 31 embedded PostgreSQL scenario
 Hosted verification: signup and anonymous sign-in disabled; anonymous internal table reads and admin/mutation RPCs denied; disabled sharing returns no snapshot; unauthenticated invitation function rejects requests. Controlled active-admin SQL queries verify configuration (three seeded stages/templates), empty Calendar and exact no-data comparison results. The Edge Function is deployed, including manual link generation. Signed-in manual-link generation and recipient password activation passed; the user confirmed Home-only navigation matching no-module privileges. Supabase confirms accepted status. Security review removed unnecessary auto-RLS/helper execution grants; private-table no-policy notices are intentional. Leaked-password protection remains disabled without upgrading the plan.
 
 No synthetic business data is loaded into the normal application. SQL test fixtures live only in an ephemeral database.
+
+## Editor/timezone and first P2 batch
+
+The approved scope and boundaries are in P2-SCOPE.md. 35 embedded PostgreSQL scenarios pass, including timezone day boundaries, custom Trip pipeline retirement/default conversion, exact budget amounts, void exclusion, stale-version conflicts, local audit date filtering and module/anonymous access denial. Component tests cover Markdown round trips, external template replacement, read-only budget UI, exact large-IDR variances, safe audit rendering and sibling budget draft preservation. Hosted migrations and anonymous denial checks pass. Browser review checked configuration and Tiptap at desktop and 390 px; real populated budget entry was not fabricated in the hosted workspace. See RELEASE.md for remaining production gates.
+
+# Workspace refinements — 14 October 2026
+
+The latest pass adds full-card compact Kanban, multiple administrators with explicit module privileges, a fixed Planned/Confirmed/In Progress board and terminal Trips archive, exact two-decimal IDR input/calculations, admin-confirmed corrections, compact signed Finance amounts and Internal Docs with WYSIWYG/templates/view-only sharing.
+
+Validation: 27 unit/component tests, 40 embedded PostgreSQL scenarios, a populated migration test, final production build/TypeScript, hosted public API denials, and rollback-only hosted workflow tests passed. Browser checks cover whole-card opening, amount autofocus/formatting, Docs table/template rendering and a 390 px editor without horizontal overflow. The approved migration is applied; the one-minute H−2 Cron job has a successful run. See [the file-level change and validation record](WORKSPACE-REFINEMENTS.md) for boundaries.
+
+## Live Trip sharing update
+
+Live Trip sharing is now enabled through a separate capability-based path, with per-link Hidden/Viewer/Editor tabs, Public tasks, and pending Finance submissions approved by Finance editors with Trip access. Contacts use a compact name/telephone-email/note table. Refresh uses fixed toast notifications. Both migrations are applied. Earlier statements about disabled sharing refer to the legacy static Trip snapshot path. See [Trip sharing](TRIP-SHARING.md) for changed files, validation and remaining hosting checks.

@@ -51,6 +51,12 @@ async function cmd(
     );
     version = current.rows[0]?.version;
   }
+  if (
+    ["create_transaction", "edit_transaction"].includes(action) &&
+    data.title === undefined &&
+    typeof data.description === "string"
+  )
+    data = { ...data, title: data.description };
   const r = await db.query<{ id: string }>(
     "select public.app_command($1::jsonb) id",
     [JSON.stringify({ action, data, id, version })],
@@ -214,8 +220,15 @@ await test("exact PRD cash example and idempotency", async () => {
   );
   assert.equal((await snapshot("finance")).totals.net, "3000000");
 });
-await test("reject fractional, locale, future, direction mismatch and foreign context", async () => {
-  for (const amount of ["1.5", "1,5", "1e3", "-1", "0", "9223372036854775808"])
+await test("reject excess decimals, locale, future, direction mismatch and foreign context", async () => {
+  for (const amount of [
+    "1.555",
+    "1,5",
+    "1e3",
+    "-1",
+    "0",
+    "9223372036854775808",
+  ])
     await assert.rejects(
       cmd("create_transaction", {
         date: "2026-09-15",
@@ -273,9 +286,9 @@ await test("void is final and audit atomic", async () => {
   assert.equal(r.rows.length, 1);
   await asUser(admin);
 });
-await test("export is admin-only and cannot spoof actor", async () => {
+await test("export follows Finance view privilege and cannot spoof actor", async () => {
   await asUser(trips);
-  await assert.rejects(db.query("select public.app_export('{}')"));
+  assert.ok((await db.query("select public.app_export('{}')")).rows.length);
   await asUser(admin);
   const r = await db.query<{ rows: any[] }>(
     "select public.app_export('{}') rows",
@@ -623,7 +636,7 @@ await test("1,000-row ledger is paginated while totals and CSV use all matching 
   await db.exec("reset role");
   await db.query(
     `insert into public.transactions(id,workspace_id,data,trip,amount_idr,transaction_date,direction,category_id,idempotency_key)
-    select gen_random_uuid(),$1::uuid,jsonb_build_object('date','2026-08-01','direction',case when n%2=1 then 'in' else 'out' end,'amount',n::text,'category',case when n%2=1 then 'in-0' else 'out-0' end,'trip',null,'description','Scale fixture '||n,'status','posted','created_by',$2::text,'void_by',null,'void_at',null,'reason','','idempotency_key',key),null,n,'2026-08-01'::date,case when n%2=1 then 'in' else 'out' end,case when n%2=1 then 'in-0' else 'out-0' end,key
+    select gen_random_uuid(),$1::uuid,jsonb_build_object('date','2026-08-01','direction',case when n%2=1 then 'in' else 'out' end,'amount',n::text,'category',case when n%2=1 then 'in-0' else 'out-0' end,'trip',null,'title','Scale fixture '||n,'description','Scale fixture '||n,'status','posted','created_by',$2::text,'void_by',null,'void_at',null,'reason','','idempotency_key',key),null,n,'2026-08-01'::date,case when n%2=1 then 'in' else 'out' end,case when n%2=1 then 'in-0' else 'out-0' end,key
     from (select n,gen_random_uuid() key from generate_series(1,1000) n) x`,
     [w, admin],
   );
@@ -1098,6 +1111,7 @@ await test("local timezone snapshot, instant range and future-date validation ag
     amount: "1",
     category: "other_in",
     description: "Timezone boundary test",
+    title: "Timezone boundary test",
     trip: "",
   };
   // Use an existing seeded category; the example key is not a generated ID.
@@ -1111,7 +1125,8 @@ await test("local timezone snapshot, instant range and future-date validation ag
         timezone: "Etc/GMT+12",
         data,
       }),
-    ]), /Future transaction date/,
+    ]),
+    /Future transaction date|Tanggal transaksi di masa depan/,
   );
   const result = await db.query<{ id: string }>(
     "select public.app_command($1::jsonb) id",
@@ -1132,7 +1147,11 @@ await test("local timezone snapshot, instant range and future-date validation ag
   ).transactions.find((t: any) => t.id === result.rows[0].id);
   assert.equal(saved.date, late);
   assert.match(saved.created_at, /(Z|\+00:00)$/);
-  const id = await cmd("create_journey", {...leadData,pic:admin,people:[admin]});
+  const id = await cmd("create_journey", {
+    ...leadData,
+    pic: admin,
+    people: [admin],
+  });
   await db.exec("reset role");
   await db.query(
     "update public.journeys set created_at='2026-10-14T00:30:00Z' where id=$1",
@@ -1162,7 +1181,854 @@ await test("local timezone snapshot, instant range and future-date validation ag
     ),
   );
 });
+await test("Trip pipeline is fixed, terminals archive and conversion starts Planned", async () => {
+  await asUser(admin);
+  const stages = (await snapshot("trips")).tripStages.filter(
+    (s: any) => s.active && s.semantic === "open",
+  );
+  assert.deepEqual(
+    stages.map((s: any) => s.id),
+    ["Planned", "Confirmed", "In Progress"],
+  );
+  await assert.rejects(cmd("save_trip_stage", { label: "Other", position: 0 }));
+  await assert.rejects(
+    cmd("retire_trip_stage", { id: "Planned", replacement: "Confirmed" }),
+  );
+  for (const terminal of ["Completed", "Cancelled"]) {
+    const id = await cmd("create_journey", {
+      ...leadData,
+      kind: "trip",
+      pic: admin,
+      people: [admin],
+      stage: "Planned",
+      start: "2026-10-20",
+      end: "2026-10-21",
+    });
+    await cmd("stage", { stage: terminal }, id, 1);
+    assert.equal(
+      (await snapshot("trips", {}, id)).journeys[0].lifecycle,
+      "archived",
+    );
+    assert.ok(
+      !(await snapshot("trips")).journeys.some((j: any) => j.id === id),
+    );
+    assert.ok(
+      (await snapshot("trips", { lifecycle: "archive" })).journeys.some(
+        (j: any) => j.id === id,
+      ),
+    );
+  }
+});
+await test("P2 budgets are exact plans, exclude void cash, reject stale writes and audit selected fields", async () => {
+  await asUser(admin);
+  const id = await cmd("create_journey", {
+    ...leadData,
+    kind: "trip",
+    pic: admin,
+    people: [admin],
+    stage: undefined,
+    start: "2026-10-20",
+    end: "2026-10-21",
+  });
+  const category = (await snapshot("finance")).categories.find(
+    (x: any) => x.direction === "out" && x.active,
+  ).id;
+  const data = { trip: id, category, amount: "9007199254740993" };
+  await cmd("save_budget", data);
+  let row = (await snapshot("finance", { budget_trip: id })).budgets.find(
+    (x: any) => x.category === category,
+  );
+  assert.equal(row.budget, data.amount);
+  assert.equal(row.actual, "0");
+  await assert.rejects(
+    cmd("save_budget", { ...data, amount: "-1" }, undefined, row.version),
+  );
+  await assert.rejects(
+    cmd("save_budget", { ...data, amount: "1.555" }, undefined, row.version),
+  );
+  await assert.rejects(
+    cmd(
+      "save_budget",
+      { ...data, amount: "9223372036854775808" },
+      undefined,
+      row.version,
+    ),
+  );
+  const beforeCount = (await snapshot("finance")).count;
+  await cmd("save_budget", { ...data, amount: "100" }, undefined, row.version);
+  await assert.rejects(cmd("save_budget", data, undefined, row.version));
+  assert.equal((await snapshot("finance")).count, beforeCount);
+  const tx = await cmd("create_transaction", {
+    trip: id,
+    category,
+    amount: "20",
+    direction: "out",
+    date: (await snapshot("finance")).today,
+    description: "Budget actual",
+    idempotency_key: randomUUID(),
+  });
+  row = (await snapshot("finance", { budget_trip: id })).budgets.find(
+    (x: any) => x.category === category,
+  );
+  assert.equal(row.actual, "20");
+  assert.equal(row.budget, "100");
+  const entry = (await snapshot("finance")).transactions.find(
+    (x: any) => x.id === tx,
+  );
+  await cmd(
+    "void_transaction",
+    { reason: "Fixture reversal" },
+    tx,
+    entry.version,
+  );
+  row = (await snapshot("finance", { budget_trip: id })).budgets.find(
+    (x: any) => x.category === category,
+  );
+  assert.equal(row.actual, "0");
+  await cmd("save_budget", { ...data, amount: "0" }, undefined, row.version);
+  row = (await snapshot("finance", { budget_trip: id })).budgets.find(
+    (x: any) => x.category === category,
+  );
+  assert.equal(row.budget, "0");
+  const event = (
+    await snapshot("audit", { action: "save_budget", actor: admin })
+  ).audit.find((a: any) => a.entity === id);
+  assert.equal(event.metadata.after.amount, "0");
+  assert.deepEqual(Object.keys(event.metadata.after).sort(), [
+    "amount",
+    "category",
+    "direction",
+  ]);
+  await db.exec("reset role");
+  await db.query(
+    "update private.audit_events set at='2026-10-14T00:30:00Z' where id=$1",
+    [event.id],
+  );
+  await asUser(admin);
+  assert.ok(
+    (
+      await snapshot("audit", {
+        from: "2026-10-13",
+        to: "2026-10-13",
+        timezone: "America/Los_Angeles",
+        action: "save_budget",
+      })
+    ).audit.some((a: any) => a.id === event.id),
+  );
+  assert.ok(
+    !(
+      await snapshot("audit", {
+        from: "2026-10-14",
+        to: "2026-10-14",
+        timezone: "America/Los_Angeles",
+        action: "save_budget",
+      })
+    ).audit.some((a: any) => a.id === event.id),
+  );
+  await assert.rejects(cmd("save_budget", { ...data, trip: lead }));
+  await assert.rejects(cmd("save_budget", { ...data, trip: randomUUID() }));
+});
+await test("P2 Finance projections and pipeline writes obey module privileges", async () => {
+  await db.exec("reset role");
+  const tripOnly = randomUUID(),
+    financeOnly = randomUUID();
+  for (const [id, name, privileges] of [
+    [tripOnly, "P2 Trips", { sales: "none", trips: "view", finance: "none" }],
+    [
+      financeOnly,
+      "P2 Finance",
+      { sales: "none", trips: "none", finance: "view" },
+    ],
+  ] as const) {
+    await db.query("insert into auth.users(id,email) values($1,$2)", [
+      id,
+      id + "@example.test",
+    ]);
+    await db.query(
+      "insert into public.memberships(id,workspace_id,name,email,role,status,privileges) values($1,$2,$3,$4,'member','active',$5)",
+      [id, w, name, id + "@example.test", JSON.stringify(privileges)],
+    );
+  }
+  await asUser(tripOnly);
+  const tripsState = await snapshot("trips");
+  assert.ok(tripsState.tripStages.length);
+  assert.equal(tripsState.budgets, undefined);
+  assert.ok(
+    !(await snapshot("audit")).audit.some((e: any) =>
+      [
+        "save_budget",
+        "save_category",
+        "create_transaction",
+        "edit_transaction",
+        "void_transaction",
+      ].includes(e.action),
+    ),
+  );
+  assert.equal(
+    (await db.query("select * from public.trip_budgets")).rows.length,
+    0,
+  );
+  await assert.rejects(
+    cmd("save_budget", { trip: trip, category: "out-0", amount: "1" }),
+  );
+  await assert.rejects(
+    cmd("save_trip_stage", {
+      label: "Forbidden",
+      position: 5,
+      semantic: "open",
+    }),
+  );
+  assert.ok(
+    (await snapshot("audit")).audit.every(
+      (e: any) => !e.action.includes("transaction"),
+    ),
+  );
+  await asUser(financeOnly);
+  const financeState = await snapshot("finance");
+  assert.equal(financeState.tripStages, undefined);
+  assert.equal(financeState.budgets.length, 0);
+  const target = financeState.journeys[0].id;
+  assert.ok(
+    (await snapshot("finance", { budget_trip: target })).budgets.length,
+  );
+  await assert.rejects(
+    cmd("save_budget", { trip: target, category: "out-0", amount: "1" }),
+  );
+  await assert.rejects(
+    db.query(
+      "insert into public.trip_budgets(workspace_id,trip_id,category_id,amount_idr) values($1,$2,'out-0',1)",
+      [w, target],
+    ),
+  );
+  await asUser(admin);
+});
+await test("multiple admins retain explicit privileges and protect the last active administrator", async () => {
+  await asUser(admin);
+  const second = randomUUID();
+  await db.exec("reset role");
+  await db.query(
+    "insert into auth.users(id,email) values($1,'second-admin@example.test')",
+    [second],
+  );
+  await db.query(
+    "insert into public.memberships(id,workspace_id,name,email,role,status,privileges) values($1,$2,'Second admin','second-admin@example.test','member','active',$3)",
+    [
+      second,
+      w,
+      JSON.stringify({
+        sales: "none",
+        trips: "none",
+        finance: "view",
+        docs: "none",
+      }),
+    ],
+  );
+  await asUser(admin);
+  await cmd("update_person", { role: "admin" }, second);
+  await asUser(second);
+  assert.equal((await snapshot("people")).user.role, "admin");
+  assert.ok((await snapshot("home", { assignee: "all" })).tasks.length);
+  await assert.rejects(snapshot("sales"));
+  await assert.rejects(cmd("create_transaction", {}));
+  // Promoted admin can manage the first; a last-admin demotion cannot commit.
+  await cmd("update_person", { role: "member" }, admin);
+  await assert.rejects(cmd("update_person", { role: "member" }, second));
+  await assert.rejects(cmd("deactivate", {}, second));
+  await cmd("update_person", { role: "admin" }, admin);
+  await asUser(admin);
+  await cmd("update_person", { role: "member" }, second);
+});
+await test("decimal corrections remain pending until admin review; members cannot confirm or void", async () => {
+  await asUser(admin);
+  const editor = randomUUID();
+  await db.exec("reset role");
+  await db.query(
+    "insert into auth.users(id,email) values($1,'finance-editor@example.test')",
+    [editor],
+  );
+  await db.query(
+    "insert into public.memberships(id,workspace_id,name,email,role,status,privileges) values($1,$2,'Finance editor','finance-editor@example.test','member','active',$3)",
+    [
+      editor,
+      w,
+      JSON.stringify({
+        sales: "none",
+        trips: "none",
+        finance: "edit",
+        docs: "none",
+      }),
+    ],
+  );
+  await asUser(editor);
+  const entry = {
+    title: "Vendor invoice",
+    description: "",
+    date: "2026-09-01",
+    amount: "9007199254740993.51",
+    direction: "out",
+    category: "out-1",
+    trip: null,
+    idempotency_key: randomUUID(),
+  };
+  const id = await cmd("create_transaction", entry);
+  await assert.rejects(
+    cmd("create_transaction", {
+      ...entry,
+      title: "",
+      idempotency_key: randomUUID(),
+    }),
+  );
+  await assert.rejects(
+    cmd("void_transaction", { reason: "Not allowed" }, id, 1),
+  );
+  const baseline = (await snapshot("finance")).totals.net;
+  await cmd(
+    "edit_transaction",
+    { ...entry, amount: "9007199254740993.52", reason: "Fix invoice cents" },
+    id,
+    1,
+  );
+  let snap = await snapshot("finance");
+  assert.equal(snap.totals.net, baseline);
+  const correction = snap.corrections.find((c: any) => c.transaction_id === id);
+  assert.equal(correction.original.amount, entry.amount);
+  await assert.rejects(
+    cmd("approve_correction", {}, correction.id, correction.version),
+  );
+  await assert.rejects(
+    cmd(
+      "reject_correction",
+      { reason: "Not allowed" },
+      correction.id,
+      correction.version,
+    ),
+  );
+  await assert.rejects(
+    cmd("edit_transaction", { ...entry, reason: "Duplicate" }, id, 1),
+  );
+  await asUser(admin);
+  await cmd("approve_correction", {}, correction.id, correction.version);
+  snap = await snapshot("finance");
+  const changed = snap.transactions.find((t: any) => t.id === id);
+  assert.equal(changed.amount, "9007199254740993.52");
+  assert.equal(changed.description, "");
+  assert.equal(changed.confirmed_by, admin);
+  assert.equal(
+    snap.corrections.some((c: any) => c.transaction_id === id),
+    false,
+  );
+  await assert.rejects(
+    cmd("approve_correction", {}, correction.id, correction.version),
+  );
+  await cmd(
+    "edit_transaction",
+    { ...entry, amount: "1.25", reason: "Should be rejected" },
+    id,
+    changed.version,
+  );
+  const rejected = (await snapshot("finance")).corrections.find(
+    (c: any) => c.transaction_id === id,
+  );
+  await cmd(
+    "reject_correction",
+    { reason: "Invoice unchanged" },
+    rejected.id,
+    rejected.version,
+  );
+  assert.equal(
+    (await snapshot("finance")).transactions.find((t: any) => t.id === id)
+      .amount,
+    "9007199254740993.52",
+  );
+  await cmd(
+    "edit_transaction",
+    { ...entry, amount: "1.25", reason: "Pending before void" },
+    id,
+    changed.version,
+  );
+  const voidPending = (await snapshot("finance")).corrections.find(
+    (c: any) => c.transaction_id === id,
+  );
+  await cmd(
+    "void_transaction",
+    { reason: "Duplicate invoice" },
+    id,
+    changed.version,
+  );
+  await assert.rejects(
+    cmd("approve_correction", {}, voidPending.id, voidPending.version),
+  );
+});
+await test("Confirmed trips advance at H-2 in workspace time while Planned waits", async () => {
+  await asUser(admin);
+  const boundary = await db.query<{ h2: string; h3: string }>(
+    "select to_char((now() at time zone 'Asia/Jakarta')::date+2,'YYYY-MM-DD') h2,to_char((now() at time zone 'Asia/Jakarta')::date+3,'YYYY-MM-DD') h3",
+  );
+  const { h2, h3 } = boundary.rows[0];
+  const fixture = {
+    ...leadData,
+    kind: "trip",
+    pic: admin,
+    people: [admin],
+    stage: "Confirmed",
+    start: h3,
+    end: h3,
+    quote: "1250000.25",
+  };
+  const id = await cmd("create_journey", fixture);
+  assert.equal(
+    (await snapshot("trips", {}, id)).journeys[0].stage,
+    "Confirmed",
+  );
+  await cmd("update_journey", { start: h2 }, id, 1);
+  const progress = (await snapshot("trips", { timezone: "Etc/GMT+12" }, id))
+    .journeys[0];
+  assert.equal(progress.stage, "In Progress");
+  assert.equal(progress.version, 3);
+  assert.equal((await snapshot("trips", {}, id)).journeys[0].version, 3);
+  const planned = await cmd("create_journey", {
+    ...fixture,
+    stage: "Planned",
+    start: h2,
+  });
+  assert.equal(
+    (await snapshot("trips", {}, planned)).journeys[0].stage,
+    "Planned",
+  );
+  await cmd("archive", { outcome: "completed" }, id, progress.version);
+  assert.equal(
+    (await snapshot("trips", {}, id)).journeys[0].stage,
+    "Completed",
+  );
+  assert.equal(
+    (await snapshot("trips", {}, id)).journeys[0].lifecycle,
+    "archived",
+  );
+});
+const docsReader = randomUUID();
+await test("Internal Docs enforce view/edit privileges, immutable creator, templates and optimistic saves", async () => {
+  await asUser(admin);
+  const person = (await snapshot("people")).user;
+  await cmd(
+    "update_person",
+    { privileges: { ...person.privileges, docs: "edit" } },
+    admin,
+    person.version,
+  );
+  const doc = {
+    title: "Operations SOP",
+    date: "2026-10-14",
+    category: "SOP",
+    body: "## Checklist\n\n- [ ] Review **invoice**\n\n| Item | Value |\n| --- | --- |\n| Budget | 100 |",
+  };
+  const id = await cmd("create_doc", doc);
+  const saved = (await snapshot("docs", {}, id)).documents[0];
+  assert.equal(saved.creator, admin);
+  assert.equal(saved.body, doc.body);
+  assert.equal((await snapshot("docs")).documents[0].body, undefined);
+  assert.equal((await snapshot("docs", { search: "Operations" })).count, 1);
+  assert.ok(
+    (await snapshot("docs")).templates.some(
+      (t: any) => t.kind === "internal_doc",
+    ),
+  );
+  await cmd(
+    "update_doc",
+    { ...doc, title: "Updated SOP", creator: trips },
+    id,
+    1,
+  );
+  assert.equal((await snapshot("docs", {}, id)).documents[0].creator, admin);
+  await assert.rejects(cmd("update_doc", doc, id, 1));
+  await assert.rejects(
+    cmd("update_doc", { ...doc, body: "x".repeat(50001) }, id, 2),
+  );
+  await db.exec("reset role");
+  await db.query(
+    "insert into auth.users(id,email) values($1,'docs-reader@example.test')",
+    [docsReader],
+  );
+  await db.query(
+    "insert into public.memberships(id,workspace_id,name,email,role,status,privileges) values($1,$2,'Docs reader','docs-reader@example.test','member','active',$3)",
+    [
+      docsReader,
+      w,
+      JSON.stringify({
+        sales: "none",
+        trips: "none",
+        finance: "none",
+        docs: "view",
+      }),
+    ],
+  );
+  await asUser(docsReader);
+  assert.equal(
+    (await snapshot("docs", {}, id)).documents[0].title,
+    "Updated SOP",
+  );
+  await assert.rejects(cmd("update_doc", doc, id, 2));
+  await assert.rejects(
+    cmd("save_template", {
+      name: "Denied",
+      kind: "internal_doc",
+      content: "Test",
+    }),
+  );
+  await assert.rejects(
+    db.query("update public.internal_docs set body='FORGED'"),
+  );
+  await asUser(admin);
+  await cmd("save_template", {
+    name: "SOP template",
+    kind: "internal_doc",
+    content: "## SOP",
+  });
+  await db.exec("reset role;set role anon");
+  await assert.rejects(db.query("select * from public.internal_docs"));
+  await asUser(sales);
+  await assert.rejects(snapshot("docs"));
+  assert.equal(
+    (await db.query("select * from public.internal_docs")).rows.length,
+    0,
+  );
+  await asUser(admin);
+});
+await test("Docs sharing publishes only an expiring read-only snapshot and supports revoke", async () => {
+  await asUser(admin);
+  const id = (await snapshot("docs")).documents[0].id;
+  const doc = (await snapshot("docs", {}, id)).documents[0];
+  const token = "e".repeat(64);
+  const manage = async (action: string, link?: string, version = doc.version) =>
+    (
+      await db.query<{ r: any }>(
+        "select public.app_doc_share_manage($1,$2,$3,$4,$5,7) r",
+        [action, id, link || null, version, token],
+      )
+    ).rows[0].r;
+  const link = await manage("create");
+  await asUser(docsReader);
+  await assert.rejects(manage("create"));
+  await db.exec("reset role;set role anon");
+  let publicDoc = (
+    await db.query<{ r: any }>("select public.app_share_read($1) r", [token])
+  ).rows[0].r;
+  assert.equal(publicDoc.title, doc.title);
+  assert.equal(publicDoc.notes[0].body, doc.body);
+  assert.equal(publicDoc.creator, undefined);
+  assert.equal(publicDoc.privileges, undefined);
+  await asUser(admin);
+  await cmd(
+    "update_doc",
+    { ...doc, body: "Updated private draft" },
+    id,
+    doc.version,
+  );
+  publicDoc = (
+    await db.query<{ r: any }>("select public.app_share_read($1) r", [token])
+  ).rows[0].r;
+  assert.equal(publicDoc.notes[0].body, doc.body);
+  await assert.rejects(manage("publish", link.id));
+  await manage("publish", link.id, doc.version + 1);
+  assert.equal(
+    (await db.query<{ r: any }>("select public.app_share_read($1) r", [token]))
+      .rows[0].r.notes[0].body,
+    "Updated private draft",
+  );
+  await manage("revoke", link.id, doc.version + 1);
+  assert.equal(
+    (await db.query<{ r: any }>("select public.app_share_read($1) r", [token]))
+      .rows[0].r,
+    null,
+  );
+});
+// Live bearer Trip access: actual anonymous RPC calls, not member-session simulations.
+const liveToken = "a".repeat(64),
+  secondToken = "b".repeat(64),
+  viewerToken = "c".repeat(64);
+const livePermissions = {
+  overview: "view",
+  notes: "edit",
+  itinerary: "edit",
+  contacts: "edit",
+  tasks: "edit",
+  finance: "edit",
+};
+let liveLink = "",
+  publicTask = "",
+  requestId = "",
+  otherRequest = "";
+async function manageLive(
+  action: string,
+  token: string | null,
+  permissions = livePermissions,
+  link: string | null = null,
+  version: number | null = null,
+) {
+  const r = await db.query<{ d: any }>(
+    "select public.app_trip_share_manage($1,$2,$3,$4,$5::jsonb,$6,7) d",
+    [action, trip, link, version, JSON.stringify(permissions), token],
+  );
+  return r.rows[0].d;
+}
+async function anonymous() {
+  await db.exec("reset role");
+  await db.query("select set_config('request.jwt.claim.sub','',false)");
+  await db.exec("set role anon");
+}
+async function liveRead(token = liveToken) {
+  const r = await db.query<{ d: any }>(
+    "select public.app_trip_public_read($1) d",
+    [token],
+  );
+  return r.rows[0].d;
+}
+async function liveWrite(
+  action: string,
+  data = {},
+  id?: string,
+  version?: number,
+  token = liveToken,
+) {
+  const r = await db.query<{ id: string }>(
+    "select public.app_trip_public_command($1,$2::jsonb) id",
+    [token, JSON.stringify({ action, data, id, version, timezone: "UTC" })],
+  );
+  return r.rows[0].id;
+}
+await test("live Trip link management requires Trips edit and Finance sharing requires Finance edit", async () => {
+  await asUser(trips);
+  await assert.rejects(manageLive("create", liveToken));
+  await asUser(admin);
+  liveLink = (await manageLive("create", liveToken)).id;
+  await manageLive("create", secondToken);
+  await manageLive("create", viewerToken, {
+    ...livePermissions,
+    notes: "view",
+    itinerary: "none",
+    tasks: "view",
+    finance: "view",
+  });
+  publicTask = await cmd("create_task", {
+    context: "trip",
+    parent: trip,
+    assignee: "public",
+    title: "Public only task",
+    description: "For guests",
+    due: "",
+  });
+  await cmd("create_task", {
+    context: "trip",
+    parent: trip,
+    assignee: admin,
+    title: "INTERNAL TASK NEVER PUBLIC",
+    due: "",
+  });
+});
+await test("anonymous live projection hides member tasks, all ledger data and member identity", async () => {
+  await anonymous();
+  const d = await liveRead();
+  assert.equal(d.tasks.length, 1);
+  assert.equal(d.tasks[0].id, publicTask);
+  assert.equal(d.tasks[0].assignee, "public");
+  assert.equal(d.journey.pic, "");
+  assert.equal(d.journey.quote, "");
+  assert.deepEqual(d.journey.people, []);
+  assert.equal(d.transactions, undefined);
+  assert.equal(d.tasks[0].created_by, undefined);
+  assert.deepEqual((await liveRead(viewerToken)).journey.days, []);
+  await assert.rejects(db.query("select * from private.trip_submissions"));
+  await assert.rejects(db.query("select * from private.trip_access_links"));
+});
+await test("public content edit is live, stale writes fail, hidden and viewer tabs reject writes", async () => {
+  await anonymous();
+  let d = await liveRead();
+  const notes = d.journey.notes.map((n: any) => ({
+    ...n,
+    body: "LIVE PUBLIC UPDATE",
+  }));
+  await liveWrite("content", { notes }, trip, d.journey.version);
+  assert.equal((await liveRead()).journey.notes[0].body, "LIVE PUBLIC UPDATE");
+  await assert.rejects(
+    liveWrite("content", { notes }, trip, d.journey.version),
+  );
+  d = await liveRead();
+  await assert.rejects(
+    liveWrite("content", { notes }, trip, d.journey.version, viewerToken),
+  );
+  await assert.rejects(
+    liveWrite(
+      "content",
+      { days: d.journey.days },
+      trip,
+      d.journey.version,
+      viewerToken,
+    ),
+  );
+  await assert.rejects(
+    liveWrite("content", { notes, contacts: [] }, trip, d.journey.version),
+  );
+  await assert.rejects(
+    liveWrite("update_journey", { quote: "1" }, trip, d.journey.version),
+  );
+});
+await test("public tasks edit only Public tasks in their own Trip, can be reassigned by members", async () => {
+  await anonymous();
+  let d = await liveRead();
+  await liveWrite(
+    "task_status",
+    { status: "Doing" },
+    publicTask,
+    d.tasks[0].version,
+  );
+  await assert.rejects(liveWrite("task_status", { status: "Done" }, task, 1));
+  await asUser(admin);
+  await cmd(
+    "update_task",
+    { assignee: admin, title: "Member task now", description: "", due: "" },
+    publicTask,
+    2,
+  );
+  await anonymous();
+  assert.equal((await liveRead()).tasks.length, 0);
+  await assert.rejects(
+    liveWrite("task_status", { status: "Done" }, publicTask, 3),
+  );
+  await asUser(admin);
+  await cmd(
+    "update_task",
+    { assignee: "public", title: "Public again", description: "", due: "" },
+    publicTask,
+    3,
+  );
+  await anonymous();
+  assert.equal((await liveRead()).tasks.length, 1);
+});
+const publicCash = {
+  title: "Guest expense",
+  date: "2020-01-01",
+  direction: "out",
+  amount: "1234.56",
+  category: "out-1",
+  description: "Guest receipt",
+  idempotency_key: randomUUID(),
+};
+await test("public transactions remain outside ledger, retry safely, and isolate status by link", async () => {
+  await anonymous();
+  requestId = await liveWrite("submit_transaction", publicCash);
+  assert.equal(await liveWrite("submit_transaction", publicCash), requestId);
+  await assert.rejects(
+    liveWrite("submit_transaction", { ...publicCash, amount: "999" }),
+  );
+  await assert.rejects(
+    liveWrite(
+      "submit_transaction",
+      publicCash,
+      undefined,
+      undefined,
+      viewerToken,
+    ),
+  );
+  assert.equal((await liveRead()).submissions[0].status, "pending");
+  assert.equal((await liveRead(secondToken)).submissions.length, 0);
+  otherRequest = await liveWrite(
+    "submit_transaction",
+    { ...publicCash, idempotency_key: randomUUID() },
+    undefined,
+    undefined,
+    secondToken,
+  );
+  await asUser(admin);
+  assert.equal(
+    (
+      await db.query(
+        "select id from public.transactions where idempotency_key=$1",
+        [requestId],
+      )
+    ).rows.length,
+    0,
+  );
+  assert.ok(
+    (await snapshot("trips", {}, trip)).submissions.some(
+      (x: any) => x.id === requestId,
+    ),
+  );
+});
+await test("Finance edit member approves public cash exactly once; viewer cannot approve", async () => {
+  await asUser(trips);
+  await assert.rejects(cmd("approve_submission", {}, requestId, 1));
+  await asUser(admin);
+  const tx = await cmd("approve_submission", {}, requestId, 1);
+  await assert.rejects(cmd("approve_submission", {}, requestId, 1));
+  const rows = await db.query<{ amount: string }>(
+    "select amount_idr::text amount from public.transactions where id=$1",
+    [tx],
+  );
+  assert.equal(rows.rows[0].amount, "1234.56");
+  await anonymous();
+  assert.equal((await liveRead()).submissions[0].status, "approved");
+  assert.equal((await liveRead()).transactions, undefined);
+});
+await test("rejection records reason without posting cash and contacts expose approved notes only", async () => {
+  await asUser(admin);
+  await assert.rejects(
+    cmd("reject_submission", { reason: "" }, otherRequest, 1),
+  );
+  await cmd(
+    "reject_submission",
+    { reason: "Receipt missing" },
+    otherRequest,
+    1,
+  );
+  await anonymous();
+  assert.equal(
+    (await liveRead(secondToken)).submissions[0].review_reason,
+    "Receipt missing",
+  );
+  const d = await liveRead();
+  const contact = {
+    id: randomUUID(),
+    name: "Guest guide",
+    phone: "123",
+    email: "guide@example.test",
+    note: "PUBLIC CONTACT NOTE",
+    role: "",
+    organization: "",
+  };
+  await liveWrite("content", { contacts: [contact] }, trip, d.journey.version);
+  assert.equal(
+    (await liveRead()).journey.contacts[0].note,
+    "PUBLIC CONTACT NOTE",
+  );
+});
+await test("live permissions downgrade, revoke and expired links immediately deny anonymous access", async () => {
+  await asUser(admin);
+  await manageLive(
+    "publish",
+    null,
+    { ...livePermissions, notes: "none", tasks: "none" },
+    liveLink,
+    1,
+  );
+  await anonymous();
+  assert.deepEqual((await liveRead()).journey.notes, []);
+  assert.deepEqual((await liveRead()).tasks, []);
+  await assert.rejects(
+    liveWrite("task_status", { status: "Done" }, publicTask, 4),
+  );
+  await asUser(admin);
+  await manageLive("revoke", null, livePermissions, liveLink, 2);
+  await anonymous();
+  await assert.rejects(liveRead());
+  await db.exec("reset role");
+  await db.query(
+    "update private.trip_access_links set expires_at=now()-interval '1 second' where token_hash=encode(sha256(convert_to($1,'UTF8')),'hex')",
+    [secondToken],
+  );
+  await anonymous();
+  await assert.rejects(liveRead(secondToken));
+});
 console.log(
   `Database regression: ${passed} scenarios passed (embedded PostgreSQL; hosted Auth/email/concurrency remain separate gates).`,
 );
 await db.close();
+await import("./test-refinements-migration");

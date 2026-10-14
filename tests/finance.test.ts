@@ -9,12 +9,28 @@ import {
   todayIn,
 } from "../src/lib/domain";
 import type { Transaction } from "../src/lib/model";
-test("whole-rupiah input preserves precision and rejects ambiguous values", () => {
+import {
+  decimalString,
+  minorUnits,
+  formatIDR,
+  formatMoneyInput,
+  parseMoneyInput,
+} from "../src/lib/money";
+test("IDR input groups live digits and retains hundredths without floating point", () => {
+  assert.equal(formatMoneyInput("1250000,50"), "1.250.000,50");
+  assert.equal(parseMoneyInput("1.250.000,50"), "1250000.5");
+  assert.equal(formatIDR("9007199254740993.51"), "Rp 9.007.199.254.740.993,51");
+  assert.equal(decimalString(minorUnits("10.02") - minorUnits("9.99")), "0.03");
+  assert.equal(decimalString(minorUnits("0.01") - minorUnits("1")), "-0.99");
+  for (const invalid of ["1,", "1,234", "1.25", "-1", "1e3"])
+    assert.throws(() => parseMoneyInput(invalid));
+});
+test("decimal IDR input preserves precision and rejects ambiguous or excessive values", () => {
   assert.equal(money("9007199254740993"), "9007199254740993");
   assert.equal(money("00015"), "15");
   for (const v of [
     "1,5",
-    "1.5",
+    "1.555",
     "1e3",
     "-1",
     "0",
@@ -26,6 +42,9 @@ test("whole-rupiah input preserves precision and rejects ambiguous values", () =
   ])
     assert.throws(() => money(v));
   assert.equal(money("0", false), "0");
+  assert.equal(money("1.50"), "1.5");
+  assert.equal(money("0.01"), "0.01");
+  assert.equal(money("9223372036854775807.99"), "9223372036854775807.99");
 });
 test("cash arithmetic is exact beyond JavaScript safe integers", () => {
   const row = (amount: string, direction: "in" | "out", status = "posted") =>

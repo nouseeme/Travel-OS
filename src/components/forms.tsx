@@ -14,6 +14,7 @@ import { noPrivileges, stages, tripStages } from "@/lib/model";
 import { can } from "@/lib/format";
 import { Modal } from "./ui/dialog";
 import { Button } from "./ui/button";
+import { MoneyInput } from "./money-input";
 export type Editor = {
   kind:
     | "journey"
@@ -70,7 +71,7 @@ function Field({
 function Privileges({ user }: { user?: Pick<Person, "privileges"> }) {
   return (
     <div className="privilege-fields">
-      {(["sales", "trips", "finance"] as Module[]).map((m) => (
+      {(["sales", "trips", "finance", "docs"] as Module[]).map((m) => (
         <label key={m}>
           {m[0].toUpperCase() + m.slice(1)}
           <select name={m} defaultValue={user?.privileges[m] || "none"}>
@@ -111,11 +112,7 @@ export function Forms({
   const title = {
     journey: j ? "Edit detail" : trip ? "Tambah Trip" : "Tambah Lead",
     task: t ? "Edit task" : "Tambah task",
-    transaction: tx
-      ? "Koreksi transaksi"
-      : direction === "in"
-        ? "Add Money In"
-        : "Add Money Out",
+    transaction: tx ? "Ajukan koreksi transaksi" : "Record transaction",
     invite: "Undang member",
     permissions: "Atur privilege",
     archive: "Archive lead / trip",
@@ -152,7 +149,8 @@ export function Forms({
         stage:
           get("stage") ||
           (trip
-            ? "Planned"
+            ? s.tripStages?.find((x) => x.is_default && x.active)?.id ||
+              "Planned"
             : s.salesStages?.find((x) => x.is_default && x.active)?.id ||
               "Drafts"),
         trip_type: get("trip_type"),
@@ -206,6 +204,7 @@ export function Forms({
           amount: get("amount"),
           category: get("category"),
           trip: get("trip") || null,
+          title: get("title"),
           description: get("description"),
           reason: get("reason"),
           idempotency_key: get("idempotency_key"),
@@ -221,6 +220,7 @@ export function Forms({
             sales: get("sales"),
             trips: get("trips"),
             finance: get("finance"),
+            docs: get("docs"),
           },
         },
       };
@@ -230,10 +230,12 @@ export function Forms({
         id: e.invitation?.id || e.person!.id,
         version: e.invitation?.version || e.person!.version,
         data: {
+          ...(e.person ? { role: get("role") } : {}),
           privileges: {
             sales: get("sales"),
             trips: get("trips"),
             finance: get("finance"),
+            docs: get("docs"),
           },
         },
       };
@@ -244,6 +246,7 @@ export function Forms({
         version: j!.version,
         data: {
           lost: get("outcome") === "lost",
+          outcome: get("outcome"),
           reason: get("reason"),
           cancel: f.has("cancel"),
         },
@@ -265,6 +268,30 @@ export function Forms({
     await onSubmit(c);
   }
   const [key] = useState(() => crypto.randomUUID());
+  const taskReadOnly =
+    t &&
+    (t.context === "internal"
+      ? t.assignee !== s.user.id
+      : !can(s.user, t.context === "lead" ? "sales" : "trips", true));
+  if (e.kind === "task" && taskReadOnly)
+    return (
+      <Modal open title="Lihat task" onClose={onClose}>
+        <div className="modal-form">
+          <h3>{t.title}</h3>
+          <p>{t.description || "Tanpa catatan"}</p>
+          <p>
+            Status: {t.status} · Due: {t.due || "Tanpa tanggal"}
+          </p>
+          <p>
+            Assignee:{" "}
+            {t.assignee === "public"
+              ? "Public"
+              : s.people.find((p) => p.id === t.assignee)?.name}
+          </p>
+          <small>Hanya-baca</small>
+        </div>
+      </Modal>
+    );
   return (
     <Modal
       title={title}
@@ -274,7 +301,7 @@ export function Forms({
         e.kind === "convert"
           ? "Salinan notes, contacts, dan itinerary akan dibuat. Unfinished task dipindahkan dengan ID yang sama. Tidak ada transaksi kas otomatis."
           : e.kind === "transaction"
-            ? "Catat kas yang benar-benar diterima atau dibayarkan, dalam rupiah utuh."
+            ? "Catat kas dalam IDR, maksimal 2 desimal. Koreksi akan menunggu persetujuan admin."
             : undefined
       }
     >
@@ -313,13 +340,15 @@ export function Forms({
                     defaultValue={
                       j?.stage ||
                       (trip
-                        ? "Planned"
+                        ? s.tripStages?.find((x) => x.is_default && x.active)
+                            ?.id || "Planned"
                         : s.salesStages?.find((x) => x.is_default && x.active)
                             ?.id || "Drafts")
                     }
                   >
                     {(trip
-                      ? tripStages.map((id) => ({ id, label: id }))
+                      ? s.tripStages?.filter((x) => x.active) ||
+                        tripStages.map((id) => ({ id, label: id }))
                       : s.salesStages?.filter((x) => x.active) ||
                         stages.map((id) => ({ id, label: id }))
                     ).map((x) => (
@@ -353,12 +382,15 @@ export function Forms({
                 required={trip}
               />
               {trip && (
-                <Field
-                  label="Quoted total IDR"
-                  name="quote"
-                  value={j?.quote}
-                  hint="Digit saja. Tidak masuk ledger kas."
-                />
+                <label>
+                  Quoted total IDR
+                  <MoneyInput
+                    name="quote"
+                    label="Quoted total IDR"
+                    value={j?.quote}
+                  />
+                  <small>Tidak masuk ledger kas.</small>
+                </label>
               )}
               <Field label="Trip type" name="trip_type" value={j?.trip_type} />
               <Field
@@ -449,12 +481,15 @@ export function Forms({
                   }
                   required
                 >
+                  {(t?.context || e.context) === "trip" && (
+                    <option value="public">Public</option>
+                  )}
                   {s.people
                     .filter(
                       (p) =>
                         p.status === "active" &&
                         ((t?.context || e.context) === "internal"
-                          ? s.user.role === "admin" || p.id === s.user.id
+                          ? p.id === s.user.id
                           : can(
                               p,
                               (t?.context || e.context) === "lead"
@@ -496,16 +531,26 @@ export function Forms({
                     setDirection(ev.target.value as "in" | "out")
                   }
                 >
-                  <option value="in">Money In</option>
-                  <option value="out">Money Out</option>
+                  <option value="in">Income / Receipts</option>
+                  <option value="out">Expense / Payments</option>
                 </select>
               </label>
+              <label>
+                Amount IDR *
+                <MoneyInput
+                  name="amount"
+                  label="Amount IDR"
+                  value={tx?.amount}
+                  required
+                  autoFocus
+                />
+                <small>Contoh 1.250.000,50 · maksimal 2 desimal</small>
+              </label>
               <Field
-                label="Amount IDR *"
-                name="amount"
-                value={tx?.amount}
+                label="Judul *"
+                name="title"
+                value={tx?.title || tx?.description}
                 required
-                hint="Contoh 1250000. Titik/koma tidak diterima."
               />
               <label>
                 Category *
@@ -545,12 +590,8 @@ export function Forms({
               </select>
             </label>
             <label>
-              Deskripsi *
-              <textarea
-                name="description"
-                required
-                defaultValue={tx?.description}
-              />
+              Catatan (opsional)
+              <textarea name="description" defaultValue={tx?.description} />
             </label>
             {tx && <Field label="Alasan koreksi *" name="reason" required />}
           </>
@@ -576,6 +617,19 @@ export function Forms({
               pada request berikutnya; pending invitation memakai privilege
               terbaru saat activation.
             </p>
+            {e.person && (
+              <label>
+                Role
+                <select name="role" defaultValue={e.person.role}>
+                  <option value="member">Member</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <small>
+                  Admin mengelola orang, melihat task tim di Home, mengonfirmasi
+                  koreksi dan void. Akses modul mengikuti privilege.
+                </small>
+              </label>
+            )}
             <Privileges user={e.invitation || e.person} />
           </>
         )}
@@ -585,7 +639,14 @@ export function Forms({
               Outcome
               <select name="outcome">
                 <option value="archive">Archive manual</option>
-                {j?.kind === "lead" && <option value="lost">Mark Lost</option>}
+                {j?.kind === "lead" ? (
+                  <option value="lost">Mark Lost</option>
+                ) : (
+                  <>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </>
+                )}
               </select>
             </label>
             <Field label="Alasan (opsional)" name="reason" />
@@ -627,7 +688,7 @@ export function Forms({
           <>
             <div className="notice">
               Void hanya untuk entry salah/duplikat. Refund riil harus dicatat
-              sebagai Money Out baru. Void bersifat final.
+              sebagai Expense / Payments baru. Void bersifat final.
             </div>
             <Field label="Alasan void *" name="reason" required />
           </>

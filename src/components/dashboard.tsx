@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  FileText,
   LayoutGrid,
   Handshake,
   Map,
@@ -51,6 +52,14 @@ import { Board } from "./board";
 import { Forms, type Editor } from "./forms";
 import { Detail } from "./detail";
 import { ProductBrand, CompanyIdentity } from "./brand";
+import { Budget } from "./p2";
+import { InternalDocs } from "./internal-docs";
+import { ClickableRow } from "./clickable-row";
+import { BreadcrumbPicker } from "./breadcrumb-picker";
+import { TransactionDetail } from "./transaction-detail";
+import { Toast } from "./toast";
+import { SubmissionReview } from "./submission-review";
+import { Corrections } from "./corrections";
 import { localTimezone, dateInZone } from "@/lib/time";
 import {
   Calendar,
@@ -68,14 +77,16 @@ export function Dashboard() {
       ? ["configuration", "audit"].includes(parts[1])
         ? parts[1]
         : "people"
-      : ["sales", "trips", "finance"].includes(parts[0])
+      : ["sales", "trips", "finance", "docs"].includes(parts[0])
         ? parts[0]
         : "home";
   const recordId =
-    parts[1] && parts[1] !== "archive" && ["sales", "trips"].includes(parts[0])
+    parts[1] &&
+    parts[1] !== "archive" &&
+    ["sales", "trips", "docs"].includes(parts[0])
       ? parts[1]
       : undefined;
-  const archive = path === "/sales/archive";
+  const archive = ["/sales/archive", "/trips/archive"].includes(path);
   const auth = path === "/login" || path === "/create-password";
   const initialDate = dateInZone();
   const [s, setS] = useState<Snapshot | null>(null),
@@ -125,6 +136,7 @@ export function Dashboard() {
       const d = await r.json();
       if (seq !== requestSequence.current) return;
       if (!r.ok) {
+        if (r.status === 403) setS(null);
         if (r.status === 401) {
           router.replace("/login");
           return;
@@ -137,7 +149,6 @@ export function Dashboard() {
       setError("");
     } catch (e) {
       if (seq === requestSequence.current) {
-        setS(null);
         setError((e as Error).message);
       }
     } finally {
@@ -152,12 +163,24 @@ export function Dashboard() {
   }, [fetchState]);
   useEffect(() => {
     const refreshLocalDay = () => {
-      if (s && (s.today !== dateInZone() || s.timezone !== localTimezone())) void fetchState();
+      if (
+        s &&
+        !editor &&
+        !busy &&
+        !dirty &&
+        (["home", "trips"].includes(view) ||
+          s.today !== dateInZone() ||
+          s.timezone !== localTimezone())
+      )
+        void fetchState();
     };
     const timer = window.setInterval(refreshLocalDay, 60000);
     window.addEventListener("focus", refreshLocalDay);
-    return () => {window.clearInterval(timer);window.removeEventListener("focus",refreshLocalDay);};
-  }, [s?.today, s?.timezone, fetchState]);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshLocalDay);
+    };
+  }, [s?.today, s?.timezone, fetchState, dirty, editor, busy, view]);
   useEffect(() => {
     if (!dirty) return;
     const fn = (e: BeforeUnloadEvent) => {
@@ -256,14 +279,14 @@ export function Dashboard() {
     setFilters((f) => ({ ...f, [key]: value, page: "0" }));
   if (auth) return <Auth passwordMode={path === "/create-password"} />;
   if (
-    !["home", "sales", "trips", "finance", "settings"].includes(
+    !["home", "sales", "trips", "finance", "docs", "settings"].includes(
       parts[0] || "home",
     ) ||
     (parts[0] === "settings" &&
       (!["people", "configuration", "audit"].includes(parts[1]) ||
         parts.length !== 2)) ||
     (["home", "finance"].includes(parts[0]) && parts.length > 1) ||
-    (["sales", "trips"].includes(parts[0]) && parts.length > 2)
+    (["sales", "trips", "docs"].includes(parts[0]) && parts.length > 2)
   )
     return (
       <div className="auth-page">
@@ -276,6 +299,7 @@ export function Dashboard() {
     sales: "Sales CRM",
     trips: "Trips",
     finance: "Finance",
+    docs: "Internal Docs",
     people: "People",
     configuration: "Configuration",
     audit: "Audit history",
@@ -308,6 +332,7 @@ export function Dashboard() {
             { id: "sales", label: "Sales CRM", icon: Handshake },
             { id: "trips", label: "Trips", icon: Map },
             { id: "finance", label: "Finance", icon: Wallet },
+            { id: "docs", label: "Internal Docs", icon: FileText },
           ]
             .filter(
               (n) => n.id === "home" || (s && can(s.user, n.id as Module)),
@@ -329,34 +354,48 @@ export function Dashboard() {
               </button>
             ))}
         </nav>
-        {s?.user.role === "admin" && (
-          <>
-            <span className="nav-label">TEAM & SETTINGS</span>
-            <nav>
-              <button
-                className={view === "people" ? "active" : ""}
-                onClick={() => navigate("/settings/people")}
-              >
-                <Users size={18} />
-                People
-              </button>
-              <button
-                className={view === "configuration" ? "active" : ""}
-                onClick={() => navigate("/settings/configuration")}
-              >
-                <Settings size={18} />
-                Configuration
-              </button>
-              <button
-                className={view === "audit" ? "active" : ""}
-                onClick={() => navigate("/settings/audit")}
-              >
-                <ShieldCheck size={18} />
-                Audit history
-              </button>
-            </nav>
-          </>
-        )}
+        {s &&
+          (s.user.role === "admin" ||
+            ["sales", "trips", "finance", "docs"].some((m) =>
+              can(s.user, m as Module),
+            )) && (
+            <>
+              <span className="nav-label">TEAM & SETTINGS</span>
+              <nav>
+                {s.user.role === "admin" && (
+                  <button
+                    className={view === "people" ? "active" : ""}
+                    onClick={() => navigate("/settings/people")}
+                  >
+                    <Users size={18} />
+                    People
+                  </button>
+                )}
+                {["sales", "trips", "finance", "docs"].some((m) =>
+                  can(s.user, m as Module, true),
+                ) && (
+                  <button
+                    className={view === "configuration" ? "active" : ""}
+                    onClick={() => navigate("/settings/configuration")}
+                  >
+                    <Settings size={18} />
+                    Configuration
+                  </button>
+                )}
+                {["sales", "trips", "finance", "docs"].some((m) =>
+                  can(s.user, m as Module),
+                ) && (
+                  <button
+                    className={view === "audit" ? "active" : ""}
+                    onClick={() => navigate("/settings/audit")}
+                  >
+                    <ShieldCheck size={18} />
+                    Audit history
+                  </button>
+                )}
+              </nav>
+            </>
+          )}
         <div className="sidebar-bottom">
           <div className="workspace-note">
             <span className="status-dot tone-1" /> Egimu Travel · Internal
@@ -394,13 +433,66 @@ export function Dashboard() {
             >
               <Menu size={20} />
             </button>
-            <span>Workspace</span>
+            <button
+              className="breadcrumb-home"
+              onClick={() => navigate("/home")}
+            >
+              Workspace
+            </button>
             <Right size={13} />
-            <b>{title}</b>
-            {j && (
+            {s ? (
+              <BreadcrumbPicker
+                label={title || "Workspace"}
+                navigate={navigate}
+                options={[
+                  { label: "Home", url: "/home" },
+                  ...(["sales", "trips", "finance", "docs"] as Module[])
+                    .filter((m) => can(s.user, m))
+                    .map((m) => ({
+                      label: {
+                        sales: "Sales CRM",
+                        trips: "Trips",
+                        finance: "Finance",
+                        docs: "Internal Docs",
+                      }[m],
+                      url: "/" + m,
+                    })),
+                  ...(s.user.role === "admin"
+                    ? [{ label: "People", url: "/settings/people" }]
+                    : []),
+                  ...((["sales", "trips", "finance", "docs"] as Module[]).some(
+                    (m) => can(s.user, m, true),
+                  )
+                    ? [
+                        {
+                          label: "Configuration",
+                          url: "/settings/configuration",
+                        },
+                      ]
+                    : []),
+                  ...((["sales", "trips", "finance", "docs"] as Module[]).some(
+                    (m) => can(s.user, m),
+                  )
+                    ? [{ label: "Audit history", url: "/settings/audit" }]
+                    : []),
+                ]}
+              />
+            ) : (
+              <b>{title}</b>
+            )}
+            {(j || s?.documents?.some((d) => d.id === recordId)) && (
               <>
                 <Right size={13} />
-                <span>{j.name || j.client}</span>
+                <BreadcrumbPicker
+                  label={
+                    j
+                      ? j.name || j.client
+                      : s?.documents?.find((d) => d.id === recordId)?.title ||
+                        "Document"
+                  }
+                  view={view as "sales" | "trips" | "docs"}
+                  navigate={navigate}
+                />
               </>
             )}
           </div>
@@ -427,18 +519,9 @@ export function Dashboard() {
           </div>
         </header>
         <main className="workspace-content">
-          {loading && s && (
-            <div className="notice" role="status">
-              Memuat hasil terbaru. Data sebelumnya tetap ditampilkan sampai
-              request berhasil.
-            </div>
-          )}
-          {notice && (
-            <div className="success-toast" role="status">
-              <CheckCircle2 size={16} />
-              {notice}
-              <button onClick={() => setNotice("")}>×</button>
-            </div>
+          {loading && s && <Toast pending message="Memuat hasil terbaru..." />}
+          {notice && !loading && (
+            <Toast message={notice} onClose={() => setNotice("")} />
           )}
           {error && !editor && (
             <div className="error-box" role="alert">
@@ -465,7 +548,21 @@ export function Dashboard() {
           ) : (
             s && (
               <>
-                {recordId && j ? (
+                {view === "docs" && recordId ? (
+                  s.documents?.find((d) => d.id === recordId) ? (
+                    <InternalDocs
+                      key={recordId}
+                      s={s}
+                      document={s.documents.find((d) => d.id === recordId)}
+                      run={run}
+                      busy={busy}
+                      navigate={navigate}
+                      onDirty={setDirty}
+                    />
+                  ) : (
+                    <Empty text="Dokumen tidak ditemukan." />
+                  )
+                ) : recordId && j ? (
                   <Detail
                     key={j.id}
                     journey={j}
@@ -496,7 +593,9 @@ export function Dashboard() {
                           {view === "home"
                             ? `Selamat ${Number(new Intl.DateTimeFormat("en", { timeZone: s.timezone, hour: "numeric", hour12: false }).format(new Date())) < 12 ? "pagi" : "datang"}, ${s.user.name.split(" ")[0]}.`
                             : archive
-                              ? "Lead archive"
+                              ? view === "trips"
+                                ? "Trip archive"
+                                : "Lead archive"
                               : view === "sales"
                                 ? "Percakapan jadi perjalanan."
                                 : view === "trips"
@@ -507,7 +606,9 @@ export function Dashboard() {
                                       ? "Atur ruang kerja Anda."
                                       : view === "audit"
                                         ? "Jejak perubahan tim."
-                                        : "Tim Anda, terhubung."}
+                                        : view === "docs"
+                                          ? "Catatan dan pengetahuan tim."
+                                          : "Tim Anda, terhubung."}
                         </h1>
                         <p>
                           {view === "home"
@@ -519,12 +620,14 @@ export function Dashboard() {
                                 : view === "trips"
                                   ? "Dari itinerary pertama sampai tamu kembali pulang."
                                   : view === "finance"
-                                    ? "Catat Money In dan Money Out. Satu ledger, dalam IDR."
+                                    ? "Catat Income / Receipts dan Expense / Payments. Satu ledger, dalam IDR."
                                     : view === "configuration"
                                       ? "Sesuaikan tahapan Sales, kategori kas, dan template perjalanan."
                                       : view === "audit"
                                         ? "Telusuri tindakan penting dan koreksi tanpa mengubah riwayat."
-                                        : "Kelola invitation dan akses setiap anggota workspace."}
+                                        : view === "docs"
+                                          ? "Dokumen internal, template, dan catatan dalam satu tempat."
+                                          : "Kelola invitation dan akses setiap anggota workspace."}
                         </p>
                       </div>
                       <div className="heading-actions">
@@ -561,36 +664,34 @@ export function Dashboard() {
                             )}
                           </>
                         )}
-                        {view === "trips" && can(s.user, "trips", true) && (
-                          <Button
-                            onClick={() =>
-                              open({ kind: "journey", context: "trip" })
-                            }
-                          >
-                            <Plus size={16} />
-                            Trip baru
-                          </Button>
-                        )}
-                        {view === "finance" && can(s.user, "finance", true) && (
+                        {view === "trips" && (
                           <>
                             <Button
                               variant="outline"
                               onClick={() =>
-                                open({ kind: "transaction", direction: "out" })
+                                navigate(archive ? "/trips" : "/trips/archive")
                               }
                             >
-                              <ArrowUpRight size={16} />
-                              Money Out
+                              <FolderArchive size={16} />
+                              {archive ? "Active board" : "Archive"}
                             </Button>
-                            <Button
-                              onClick={() =>
-                                open({ kind: "transaction", direction: "in" })
-                              }
-                            >
-                              <Plus size={16} />
-                              Money In
-                            </Button>
+                            {!archive && can(s.user, "trips", true) && (
+                              <Button
+                                onClick={() =>
+                                  open({ kind: "journey", context: "trip" })
+                                }
+                              >
+                                <Plus size={16} />
+                                Trip baru
+                              </Button>
+                            )}
                           </>
+                        )}
+                        {view === "finance" && can(s.user, "finance", true) && (
+                          <Button onClick={() => open({ kind: "transaction" })}>
+                            <Plus size={16} />
+                            Record transaction
+                          </Button>
                         )}
                         {view === "people" && (
                           <Button onClick={() => open({ kind: "invite" })}>
@@ -600,6 +701,32 @@ export function Dashboard() {
                         )}
                       </div>
                     </section>
+                    {view === "docs" && (
+                      <>
+                        <label className="search-box">
+                          <Search size={16} />
+                          <input
+                            aria-label="Cari dokumen"
+                            placeholder="Cari judul atau category…"
+                            value={filters.search || ""}
+                            onChange={(e) => filter("search", e.target.value)}
+                          />
+                        </label>
+                        <InternalDocs
+                          key="docs-list"
+                          s={s}
+                          run={run}
+                          busy={busy}
+                          navigate={navigate}
+                          onDirty={setDirty}
+                        />
+                        <Pagination
+                          count={s.count}
+                          page={Number(filters.page || 0)}
+                          onPage={(p) => filter("page", String(p))}
+                        />
+                      </>
+                    )}
                     {view === "home" && (
                       <>
                         <div className="summary-grid">
@@ -809,7 +936,9 @@ export function Dashboard() {
                             <table>
                               <thead>
                                 <tr>
-                                  <th>Opportunity</th>
+                                  <th>
+                                    {view === "trips" ? "Trip" : "Opportunity"}
+                                  </th>
                                   <th>Outcome</th>
                                   <th>Archived</th>
                                   <th>Reason</th>
@@ -823,7 +952,7 @@ export function Dashboard() {
                                       <button
                                         className="table-link"
                                         onClick={() =>
-                                          navigate("/sales/" + j.id)
+                                          navigate(`/${view}/${j.id}`)
                                         }
                                       >
                                         {j.name || j.client}
@@ -831,12 +960,17 @@ export function Dashboard() {
                                       <small>{j.client}</small>
                                     </td>
                                     <td>
-                                      <span className="tag">{j.lifecycle}</span>
+                                      <span className="tag">
+                                        {view === "trips"
+                                          ? j.stage
+                                          : j.lifecycle}
+                                      </span>
                                     </td>
                                     <td>{shortDate(j.archived_at || "")}</td>
                                     <td>{j.lost_reason || "—"}</td>
                                     <td>
-                                      {j.lifecycle !== "converted" &&
+                                      {j.kind === "lead" &&
+                                        j.lifecycle !== "converted" &&
                                         can(s.user, "sales", true) && (
                                           <Button
                                             size="sm"
@@ -858,7 +992,9 @@ export function Dashboard() {
                               </tbody>
                             </table>
                             {!s.journeys.length && (
-                              <Empty text="Belum ada lead di archive." />
+                              <Empty
+                                text={`Belum ada ${view === "trips" ? "trip" : "lead"} di archive.`}
+                              />
                             )}
                           </div>
                         ) : journeyTab === "calendar" && view === "trips" ? (
@@ -902,10 +1038,17 @@ export function Dashboard() {
                                 ? s.salesStages
                                     ?.filter((x) => x.active)
                                     .map((x) => x.id) || stages
-                                : tripStages
+                                : s.tripStages
+                                    ?.filter(
+                                      (x) => x.active && x.semantic === "open",
+                                    )
+                                    .map((x) => x.id) || tripStages
                             }
                             labels={Object.fromEntries(
-                              (s.salesStages || []).map((x) => [x.id, x.label]),
+                              (view === "sales"
+                                ? s.salesStages || []
+                                : s.tripStages || []
+                              ).map((x) => [x.id, x.label]),
                             )}
                             mode="journeys"
                             s={s}
@@ -955,8 +1098,17 @@ export function Dashboard() {
                             >
                               Comparison
                             </button>
+                            <button
+                              aria-label="Budget vs actual"
+                              className={
+                                financeTab === "budget" ? "selected" : ""
+                              }
+                              onClick={() => setFinanceTab("budget")}
+                            >
+                              Budget
+                            </button>
                           </div>
-                          {s.user.role === "admin" && (
+                          {can(s.user, "finance") && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -968,7 +1120,7 @@ export function Dashboard() {
                             </Button>
                           )}
                         </div>
-                        {financeTab !== "comparison" && (
+                        {!["comparison", "budget"].includes(financeTab) && (
                           <FinanceFilters
                             s={s}
                             filters={filters}
@@ -976,16 +1128,20 @@ export function Dashboard() {
                             onAllTime={() => setFilters({ status: "posted" })}
                           />
                         )}
-                        {financeTab !== "comparison" && (
+                        {!["comparison", "budget"].includes(financeTab) && (
                           <CashStats
                             s={s}
                             period={periodLabel(appliedFilters)}
                           />
                         )}
-                        {financeTab === "comparison" ? (
+                        {financeTab === "budget" ? (
+                          <Budget s={s} run={run} busy={busy} />
+                        ) : financeTab === "comparison" ? (
                           <Comparison s={s} />
                         ) : financeTab === "transactions" ? (
                           <>
+                            <SubmissionReview s={s} run={run} busy={busy} />
+                            <Corrections s={s} run={run} busy={busy} />
                             <Ledger
                               s={s}
                               canEdit={can(s.user, "finance", true)}
@@ -1010,8 +1166,8 @@ export function Dashboard() {
                                 <thead>
                                   <tr>
                                     <th>Trip / Context</th>
-                                    <th>Money In</th>
-                                    <th>Money Out</th>
+                                    <th>Income / Receipts</th>
+                                    <th>Expense / Payments</th>
                                     <th>Hasil kas</th>
                                   </tr>
                                 </thead>
@@ -1039,10 +1195,10 @@ export function Dashboard() {
                               )}
                             </div>
                             <div className="notice">
-                              Hasil kas adalah Money In − Money Out. Quoted
-                              price tidak dihitung; modal dan pinjaman termasuk
-                              kas. Angka ini bukan bank balance atau accrual
-                              profit.
+                              Hasil kas adalah Income / Receipts − Expense /
+                              Payments. Quoted price tidak dihitung; modal dan
+                              pinjaman termasuk kas. Angka ini bukan bank
+                              balance atau accrual profit.
                             </div>
                           </>
                         )}
@@ -1059,6 +1215,56 @@ export function Dashboard() {
                           value={filters.search || ""}
                           onChange={(e) => filter("search", e.target.value)}
                         />
+                        <div className="filter-row">
+                          <label>
+                            Dari
+                            <input
+                              type="date"
+                              aria-label="Audit dari"
+                              value={filters.from || ""}
+                              onChange={(e) => filter("from", e.target.value)}
+                            />
+                          </label>
+                          <label>
+                            Sampai
+                            <input
+                              type="date"
+                              aria-label="Audit sampai"
+                              value={filters.to || ""}
+                              onChange={(e) => filter("to", e.target.value)}
+                            />
+                          </label>
+                          <label>
+                            Actor
+                            <select
+                              aria-label="Audit actor"
+                              value={filters.actor || ""}
+                              onChange={(e) => filter("actor", e.target.value)}
+                            >
+                              <option value="">Semua actor</option>
+                              {s.people.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label>
+                            Action
+                            <input
+                              aria-label="Audit action"
+                              placeholder="Contoh: save_budget"
+                              value={filters.action || ""}
+                              onChange={(e) => filter("action", e.target.value)}
+                            />
+                          </label>
+                          <Button
+                            variant="ghost"
+                            onClick={() => setFilters({})}
+                          >
+                            Reset
+                          </Button>
+                        </div>
                         <AuditViewer s={s} />
                         <Pagination
                           count={s.count}
@@ -1132,15 +1338,16 @@ export function Dashboard() {
                               <span className="role-label">{p.role}</span>
                               <div className="access-list">
                                 {(
-                                  ["sales", "trips", "finance"] as Module[]
+                                  [
+                                    "sales",
+                                    "trips",
+                                    "finance",
+                                    "docs",
+                                  ] as Module[]
                                 ).map((m) => (
                                   <div key={m}>
                                     <span>{m}</span>
-                                    <b>
-                                      {p.role === "admin"
-                                        ? "Full access"
-                                        : p.privileges[m]}
-                                    </b>
+                                    <b>{p.privileges[m] || "none"}</b>
                                   </div>
                                 ))}
                               </div>
@@ -1155,7 +1362,7 @@ export function Dashboard() {
                                   Atur akses
                                 </Button>
                                 {p.status === "active" &&
-                                  p.role !== "admin" && (
+                                  p.id !== s.user.id && (
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -1295,11 +1502,6 @@ export function Dashboard() {
               </>
             )
           )}
-          {loading && s && (
-            <div className="refresh-indicator" role="status">
-              Memuat perubahan…
-            </div>
-          )}
         </main>
         <footer className="app-footer">
           <span>travelOS · Egimu Travel</span>
@@ -1411,13 +1613,13 @@ export function CashStats({ s, period }: { s: Snapshot; period: string }) {
       </div>
       <div className="cash-grid">
         <Stat
-          label="Money In"
+          label="Cash receipts"
           value={moneyLabel(s.totals.moneyIn)}
           icon={ArrowDownLeft}
           text="Kas diterima"
         />
         <Stat
-          label="Money Out"
+          label="Cash payments"
           value={moneyLabel(s.totals.moneyOut)}
           icon={ArrowUpRight}
           text="Kas dibayarkan"
@@ -1426,7 +1628,7 @@ export function CashStats({ s, period }: { s: Snapshot; period: string }) {
           label="Hasil kas / Net Cash Result"
           value={moneyLabel(s.totals.net)}
           icon={Wallet}
-          text="Money In − Money Out"
+          text="Penerimaan kas − Pengeluaran kas"
         />
       </div>
     </>
@@ -1469,8 +1671,8 @@ export function FinanceFilters({
         onChange={(e) => onFilter("direction", e.target.value)}
       >
         <option value="">Semua direction</option>
-        <option value="in">Money In</option>
-        <option value="out">Money Out</option>
+        <option value="in">Income / Receipts</option>
+        <option value="out">Expense / Payments</option>
       </select>
       <select
         aria-label="Category filter"
@@ -1508,7 +1710,7 @@ export function FinanceFilters({
       </select>
       <input
         aria-label="Cari transaksi"
-        placeholder="Cari deskripsi…"
+        placeholder="Cari judul atau catatan…"
         value={f.search || ""}
         onChange={(e) => onFilter("search", e.target.value)}
       />
@@ -1527,88 +1729,88 @@ export function Ledger({
   canEdit: boolean;
   onEdit: (e: Editor) => void;
 }) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const transaction = s.transactions.find((t) => t.id === selected);
   return (
-    <div className="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Tanggal</th>
-            <th>Direction / Category</th>
-            <th>Amount IDR</th>
-            <th>Trip / General</th>
-            <th>Deskripsi</th>
-            <th>Status / Entered by</th>
-            {canEdit && <th />}
-          </tr>
-        </thead>
-        <tbody>
-          {s.transactions.map((t) => (
-            <tr key={t.id}>
-              <td>{shortDate(t.date)}</td>
-              <td>
-                <span className={"ledger-direction " + t.direction}>
-                  {t.direction === "in" ? (
-                    <ArrowDownLeft size={13} />
-                  ) : (
-                    <ArrowUpRight size={13} />
-                  )}
-                  Money {t.direction === "in" ? "In" : "Out"}
-                </span>
-                <small>
-                  {s.categories.find((c) => c.id === t.category)?.name}
-                </small>
-              </td>
-              <td className="amount-cell">{moneyLabel(t.amount)}</td>
-              <td>
-                {t.trip
-                  ? s.journeys.find((j) => j.id === t.trip)?.name || "Trip"
-                  : "General"}
-              </td>
-              <td className="description-cell">{t.description}</td>
-              <td>
-                <span
-                  className={
-                    "tag " + (t.status === "void" ? "neutral" : "trip")
-                  }
-                >
-                  {t.status}
-                </span>
-                <small>
-                  {s.people.find((p) => p.id === t.created_by)?.name}
-                </small>
-              </td>
-              {canEdit && (
-                <td>
-                  {t.status === "posted" &&
-                    (!t.trip || can(s.user, "trips")) && (
-                      <div className="row-actions">
-                        <button
-                          className="text-button tiny"
-                          onClick={() =>
-                            onEdit({ kind: "transaction", transaction: t })
-                          }
-                        >
-                          Koreksi
-                        </button>
-                        <button
-                          className="text-button tiny negative"
-                          onClick={() =>
-                            onEdit({ kind: "void", transaction: t })
-                          }
-                        >
-                          Void
-                        </button>
-                      </div>
-                    )}
-                </td>
-              )}
+    <>
+      <div className="table-wrap finance-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Tanggal</th>
+              <th>Judul / Category</th>
+              <th className="amount-cell">Amount IDR</th>
+              <th>Context</th>
+              <th>Status / Creator</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-      {!s.transactions.length && (
-        <Empty text="Belum ada transaksi pada filter ini. Mulai dengan Money In atau Money Out." />
+          </thead>
+          <tbody>
+            {s.transactions.map((t) => {
+              const pending = s.corrections?.some(
+                (c) => c.transaction_id === t.id,
+              );
+              return (
+                <ClickableRow
+                  key={t.id}
+                  label={`Buka transaksi ${t.title || "Transaksi"}`}
+                  onOpen={() => setSelected(t.id)}
+                  className={t.status === "void" ? "void-row" : ""}
+                >
+                  <td className="ledger-date">{shortDate(t.date)}</td>
+                  <td className="ledger-title">
+                    <button
+                      className="table-link"
+                      onClick={() => setSelected(t.id)}
+                    >
+                      {t.title || "Transaksi"}
+                    </button>
+                    <small>
+                      {s.categories.find((c) => c.id === t.category)?.name}
+                    </small>
+                  </td>
+                  <td
+                    className={`amount-cell ${t.status === "void" ? "muted" : t.direction === "in" ? "positive" : "negative"}`}
+                  >
+                    <span
+                      aria-label={t.direction === "in" ? "Receipt" : "Payment"}
+                    >
+                      {t.direction === "in" ? "+" : "−"}
+                      {moneyLabel(t.amount)}
+                    </span>
+                  </td>
+                  <td>
+                    {t.trip
+                      ? s.journeys.find((j) => j.id === t.trip)?.name || "Trip"
+                      : "General"}
+                  </td>
+                  <td>
+                    <span
+                      className={`tag ${t.status === "void" ? "neutral" : pending ? "lead" : "trip"}`}
+                    >
+                      {pending ? "Pending correction" : t.status}
+                    </span>
+                    <small>
+                      {s.people.find((p) => p.id === t.created_by)?.name}
+                    </small>
+                  </td>
+                </ClickableRow>
+              );
+            })}
+          </tbody>
+        </table>
+        {!s.transactions.length && (
+          <Empty text="Belum ada transaksi pada filter ini. Gunakan Record transaction untuk mencatat penerimaan atau pengeluaran." />
+        )}
+      </div>
+      {transaction && (
+        <TransactionDetail
+          transaction={transaction}
+          snapshot={s}
+          canEdit={canEdit}
+          onClose={() => setSelected(null)}
+          onEdit={onEdit}
+        />
       )}
-    </div>
+    </>
   );
 }

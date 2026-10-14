@@ -52,10 +52,14 @@ export function Column({
 function DragCard({
   id,
   disabled,
+  onOpen,
+  label,
   children,
 }: {
   id: string;
   disabled?: boolean;
+  onOpen: () => void;
+  label: string;
   children: ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
@@ -73,6 +77,7 @@ function DragCard({
           : undefined
       }
     >
+      <button className="card-open" aria-label={label} onClick={onOpen} />
       {!disabled && (
         <button
           className="drag-handle"
@@ -130,14 +135,31 @@ export function Board({
   function task(t: Task) {
     const parent = s.journeys.find((j) => j.id === t.parent);
     const warning = deadline(t, s.today);
-    const person = s.people.find((p) => p.id === t.assignee);
+    const person =
+      t.assignee === "public"
+        ? { name: "Public" }
+        : s.people.find((p) => p.id === t.assignee);
     const editable =
       t.context === "internal"
-        ? s.user.role === "admin" || s.user.id === t.assignee
+        ? s.user.id === t.assignee
         : can(s.user, t.context === "lead" ? "sales" : "trips", true);
-    const statusEditable = editable || s.user.id === t.assignee;
+    const statusEditable =
+      editable ||
+      (s.user.id === t.assignee &&
+        (t.context === "internal" ||
+          can(s.user, t.context === "lead" ? "sales" : "trips")));
+    const openTask = () =>
+      t.parent && can(s.user, t.context === "lead" ? "sales" : "trips")
+        ? onNavigate(`/${t.context === "lead" ? "sales" : "trips"}/${t.parent}`)
+        : onEdit(t);
     return (
-      <DragCard id={t.id} disabled={!statusEditable} key={t.id}>
+      <DragCard
+        id={t.id}
+        disabled={!statusEditable}
+        key={t.id}
+        label={`Buka ${t.title}`}
+        onOpen={openTask}
+      >
         <div className="card-tags">
           <span className={"tag " + t.context}>
             {t.context === "internal"
@@ -150,16 +172,7 @@ export function Board({
             <span className="tag neutral">Archived</span>
           )}
         </div>
-        <button
-          className="card-title"
-          onClick={() =>
-            t.parent
-              ? onNavigate(
-                  `/${t.context === "lead" ? "sales" : "trips"}/${t.parent}`,
-                )
-              : onEdit(t)
-          }
-        >
+        <button className="card-title" onClick={openTask}>
           {t.title}
         </button>
         {parent && (
@@ -230,7 +243,15 @@ export function Board({
       .filter((t) => t.parent === j.id && t.status !== "Done" && t.due)
       .sort((a, b) => a.due.localeCompare(b.due))[0];
     return (
-      <DragCard id={j.id} disabled={!editable} key={j.id}>
+      <DragCard
+        id={j.id}
+        disabled={!editable}
+        key={j.id}
+        label={`Buka ${j.name || j.client}`}
+        onOpen={() =>
+          onNavigate(`/${j.kind === "lead" ? "sales" : "trips"}/${j.id}`)
+        }
+      >
         <div className="card-tags">
           <span className="tag neutral">{j.trip_type || "Custom trip"}</span>
           {j.lifecycle !== "active" && (
@@ -275,7 +296,7 @@ export function Board({
         <footer>
           <div className="person-inline">
             <span className="avatar mini">{initials(person?.name || "?")}</span>
-            <small>{person?.name}</small>
+            <small title={person?.name}>{person?.name}</small>
           </div>
           <select
             aria-label={`Stage ${j.name || j.client}`}

@@ -21,6 +21,13 @@ const commandSchema = z.object({
     }, "Timezone tidak valid.")
     .default("UTC"),
   action: z.enum([
+    "save_internal_contacts",
+    "create_doc",
+    "update_doc",
+    "approve_correction",
+    "approve_submission",
+    "reject_submission",
+    "reject_correction",
     "create_journey",
     "update_journey",
     "content",
@@ -47,6 +54,9 @@ const commandSchema = z.object({
     "save_template",
     "apply_template",
     "trip_view",
+    "save_trip_stage",
+    "retire_trip_stage",
+    "save_budget",
   ]),
   id: z.uuid().optional(),
   version: z.number().int().positive().optional(),
@@ -57,6 +67,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const view = z
       .enum([
+        "docs",
         "home",
         "sales",
         "trips",
@@ -92,8 +103,17 @@ export async function POST(request: Request) {
     originCheck(request);
     const command = commandSchema.parse(await body(request));
     if (command.action === "content") validateContent(command.data || {});
+    if (command.action === "save_internal_contacts") validateContent({ contacts: command.data?.contacts });
+    if (["create_doc", "update_doc"].includes(command.action))
+      z.object({
+        title: z.string().trim().min(1).max(200),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        category: z.string().trim().min(1).max(100),
+        body: z.string().max(50000),
+      }).parse(command.data);
     if (["create_transaction", "edit_transaction"].includes(command.action))
       money(command.data?.amount);
+    if (command.action === "save_budget") money(command.data?.amount, false);
     if (
       command.data &&
       "quote" in command.data &&
@@ -196,7 +216,13 @@ export async function POST(request: Request) {
         sent,
       });
     }
-    return NextResponse.json({ id: data, message: "Perubahan tersimpan." });
+    return NextResponse.json({
+      id: data,
+      message:
+        command.action === "edit_transaction"
+          ? "Koreksi diajukan. Ledger tetap menggunakan nominal lama sampai admin mengonfirmasi."
+          : "Perubahan tersimpan.",
+    });
   } catch (e) {
     return failure(e);
   }

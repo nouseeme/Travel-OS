@@ -31,6 +31,9 @@ export const filterSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-01$/)
     .optional(),
+  actor: z.uuid().optional(),
+  budget_trip: z.uuid().optional(),
+  action: z.string().max(80).optional(),
 });
 export function parseFilters(raw: unknown) {
   const f = filterSchema.parse(raw);

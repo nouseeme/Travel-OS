@@ -1,17 +1,20 @@
-# Travel OS
+# travelOS · Egimu Travel
 
 Internal, invite-only travel operations application built from [the PRD](Travel-OS-MVP-PRD.md). The app uses real Supabase Auth and PostgreSQL. There is no demo login, local-storage database, public signup, or anonymous access to workspace records.
+
+The latest [workspace refinements](docs/WORKSPACE-REFINEMENTS.md) are implemented in the local preview, and their approved Supabase migration is applied. Code remains local and uncommitted; no application deployment was made.
 
 ## Implemented application
 
 - Home: shared Assigned/Doing/Done tasks, workspace-date deadline warnings, internal tasks, admin assignee filters, server-side card limits and Load More.
 - Sales: three-stage Kanban with drag and dropdown alternatives, structured fields, eligible PIC, notes, contacts, itinerary draft, Lost/manual archive, restore, and atomic conversion to a Planned Trip. Conversion copies documents, preserves unfinished task IDs, archives the source, and creates no cash entry.
-- Trips: Kanban, dates/guest/quotation/assigned-people validation, notes, contacts, tasks, stacked-day itinerary editing, drag reorder/move and keyboard-friendly Move Up/Down/To Day. Trip Finance is served only when both Trips and Finance privileges allow it.
-- Finance: one IDR ledger, exact bigint amounts, transaction dates, direction-specific seeded categories, Trip/general context, search/filter/pagination, period totals and cash results per Trip/general. Corrections require reasons and versions; void is final and excluded from totals. Creation is idempotent. Admin CSV exports all matching rows and protects spreadsheet formula cells.
-- People: invite-only membership without an application user cap, manual activation links, failure tracking, regenerate/revoke, editable privileges, deactivation, and tasks needing reassignment. Role/privilege/membership checks use the database on each request. The owner explicitly removed the PRD's three-user assumption.
+- Trips: Planned → Confirmed → In Progress, with Confirmed automatically advancing at H−2 in workspace time. Completed/Cancelled trips appear in the table archive. Dates/guest/quotation/assigned-people validation, notes, contacts, tasks, stacked-day itinerary editing, drag reorder/move and keyboard-friendly Move Up/Down/To Day remain available. Trip Finance requires Trips and Finance view privileges.
+- Finance: one Record transaction form, titles and optional notes, formatted IDR input with up to two decimals, exact decimal arithmetic, category/context filters, compact signed amounts, pagination, cash totals and per-trip results. Editors propose corrections; admins approve/reject them or mark a transaction void. Pending corrections leave posted totals unchanged. Creation is idempotent. Finance viewers can export all matching rows with formula-safe CSV cells.
+- Internal Docs: searchable, paginated Judul/Date/Creator/Category table; versioned Markdown/WYSIWYG documents; templates; view/edit module privileges; and expiring, revocable view-only snapshot links.
+- People: invite-only membership without an application user cap, multiple admins, manual activation links, failure tracking, regenerate/revoke, editable roles/privileges, deactivation, and tasks needing reassignment. The last active admin cannot be demoted or deactivated. Module access follows explicit privileges, including for admins.
 - Foundation: read RLS; no direct authenticated DML; narrow user-scoped RPC writes with field allowlists, database validation, optimistic version checks, workspace-consistent foreign keys, audit events and transaction rollback. Markdown skips raw HTML, executable URLs and remote image embeds. Requests check Origin, enforce body limits and use private/no-store responses.
-- P1: inclusive Trip Calendar with per-user saved view, Sales distribution/Prospect analytics, month/quarter Finance comparison, admin stage/category/template editors, Append/Replace template copies, Home date/context filters, and paginated admin audit history.
-- Sharing: selected-content preview, private snapshots, expiring hashed bearer tokens, revoke/regenerate/publish-update commands, a persistent database request budget, and a static public document without client scripts. Public sharing stays disabled until Gate C passes.
+- P1: inclusive Trip Calendar with per-user saved view, Sales distribution/Prospect analytics, exact month/quarter cash comparison, module-scoped configuration and audit, copied Append/Replace templates, and Home date/context filters. Only admins can inspect other people's tasks in Home.
+- Sharing: selected-content Trip previews retain their existing security gate. Internal Docs editors can deliberately publish view-only document snapshots. Both use private snapshots, expiring hashed tokens, revoke/publish-update commands, a persistent request budget, and static sanitized public documents.
 
 ## Local setup
 
@@ -68,10 +71,14 @@ See [acceptance evidence](docs/ACCEPTANCE.md) and [release status](docs/RELEASE.
 
 ## Vercel deployment
 
-Import this Next.js project in Vercel, use `npm ci` and `npm run build`, configure the same environment variables with `APP_URL` set to the HTTPS deployment domain, and allow its exact callback URL in Supabase. Keep the secret key server-only. The app has no anonymous business-data route. Authentication-token URL logging must be redacted at the hosting layer as well as the app layer; application request/function/browser-console logging is disabled. Use a separate validation environment before introducing real sensitive data.
+Import this Next.js project in Vercel, use `npm ci` and `npm run build`, configure the same environment variables with `APP_URL` set to the HTTPS deployment domain, and allow its exact callback URL in Supabase. Keep the secret key server-only. Trip bearer links expose only the tabs explicitly enabled by their creator; public Finance exposes submissions rather than the internal ledger. Authentication-token URL logging must be redacted at the hosting layer as well as the app layer; application request/function/browser-console logging is disabled. Use a separate validation environment before introducing real sensitive data.
 
 ## Remaining release scope
 
-P1 application features are implemented. Sharing has an implementation and preview but stays disabled with both `SHARING_ENABLED=false` and `workspaces.sharing_enabled=false`. Gate C must verify deployed token/log redaction, persistent rate limiting, revocation, projection safety and no-cache behavior before activation. The database uses a global 300 requests/minute budget; this resists IP-header spoofing but can deny availability during abuse, so hosting controls also need review.
+Live Trip sharing is enabled with per-link tab permissions, Public tasks and approval-only Finance submissions. See [Trip sharing](docs/TRIP-SHARING.md) for behavior and validation. The legacy static Trip snapshot workflow retains `SHARING_ENABLED=false` and `workspaces.sharing_enabled=false`; these flags do not disable the new live Trip links. Deployed token/log redaction, cache behavior and request-budget availability checks remain hosting verification. Live public access has a persistent global 300 requests/minute budget.
 
 Email delivery/recovery are deferred by the owner; manual invitation links are supported. Full three-account browser UAT, independent-connection races, hosting, performance and backup/restore remain release work. P2 custom roles/SSO, recurrence/dependencies/automation, forecasting/custom fields, resource scheduling/custom Trip pipeline, budgets/accounting integrations, richer history and layout builder are not implemented. Owner assumptions still need confirmation before an internal pilot.
+
+## Latest product changes
+
+The approved P2 first batch adds configurable Trips stages, IDR category budgets vs posted cash actuals, and readable audit history. Markdown editing uses Tiptap WYSIWYG. Timestamps are stored as UTC and displayed in the browser timezone; date-only values retain their calendar date. See [P2 scope](docs/P2-SCOPE.md), [time/editor requirements](docs/PRE-P2-REQUIREMENTS.md) and [release validation](docs/RELEASE.md).

@@ -1,6 +1,8 @@
-export type Module = "sales" | "trips" | "finance";
+export type Module = "sales" | "trips" | "finance" | "docs";
 export type Level = "none" | "view" | "edit";
-export type Privileges = Record<Module, Level>;
+export type Privileges = Record<Exclude<Module, "docs">, Level> & {
+  docs?: Level;
+};
 export interface Person {
   id: string;
   version: number;
@@ -77,6 +79,7 @@ export interface Category {
   version?: number;
 }
 export interface Transaction extends RecordBase {
+  title?: string;
   date: string;
   direction: "in" | "out";
   amount: string;
@@ -89,6 +92,22 @@ export interface Transaction extends RecordBase {
   void_at: string | null;
   reason: string;
   idempotency_key: string;
+}
+export interface InternalDoc extends RecordBase {
+  title: string;
+  date: string;
+  creator: string;
+  category: string;
+  body: string;
+}
+export interface Correction extends RecordBase {
+  original?: Transaction;
+  transaction_id: string;
+  requested_by: string;
+  transaction_version: number;
+  proposed: Transaction;
+  reason: string;
+  status: "pending" | "approved" | "rejected";
 }
 export interface Invitation {
   delivery_channel?: "email" | "manual";
@@ -121,6 +140,9 @@ export interface State {
   timezone: string;
 }
 export interface Filters {
+  actor?: string;
+  action?: string;
+  budget_trip?: string;
   context?: string;
   period?: "month" | "quarter";
   anchor?: string;
@@ -137,7 +159,17 @@ export interface Filters {
   pic?: string;
 }
 export interface Snapshot {
+  homeTaskCount?: number;
+  contactDirectory?: (Contact & { source: string; source_id: string | null; source_kind: "internal" | "lead" | "trip" })[];
+  internalContacts?: { contacts: Contact[]; version: number };
+  submissions?: import("./trip-sharing").Submission[];
+  documents?: InternalDoc[];
+  corrections?: Correction[];
   salesStages?: SalesStage[];
+  tripStages?: (Omit<SalesStage, "key"> & {
+    semantic: "open" | "completed" | "cancelled";
+  })[];
+  budgets?: BudgetRow[];
   templates?: Template[];
   tripView?: "board" | "calendar";
   audit?: Audit[];
@@ -175,12 +207,24 @@ export interface SalesStage {
 export interface Template {
   id: string;
   name: string;
-  kind: "lead_note" | "trip_note" | "itinerary";
+  kind: "lead_note" | "trip_note" | "itinerary" | "internal_doc";
   content:
     | string
     | { title: string; items: { name: string; description: string }[] }[];
   active: boolean;
   version: number;
+}
+export interface BudgetRow {
+  trip: string;
+  name: string;
+  category: string;
+  label: string;
+  direction: "in" | "out";
+  active: boolean;
+  budget: string | null;
+  version: number | null;
+  actual: string;
+  lifecycle: string;
 }
 export type Command = {
   action: string;
@@ -189,30 +233,31 @@ export type Command = {
   data?: Record<string, unknown>;
 };
 export const stages = ["Drafts", "Contacted", "Prospect"];
-export const tripStages = ["Planned", "In Progress", "Completed", "Cancelled"];
+export const tripStages = ["Planned", "Confirmed", "In Progress"];
 export const taskStages = ["Assigned", "Doing", "Done"] as const;
 export const noPrivileges: Privileges = {
   sales: "none",
   trips: "none",
   finance: "none",
+  docs: "none",
 };
 export const categories: Category[] = [
   ...[
-    "Deposit Trip",
-    "Pelunasan Trip",
-    "Penerimaan Lainnya",
+    "Uang muka pelanggan",
+    "Pelunasan jasa perjalanan",
+    "Pendapatan lain-lain",
     "Modal Pemilik",
     "Pinjaman Diterima",
   ].map((name, i) => ({ id: `in-${i}`, name, direction: "in" as const })),
   ...[
-    "Transportasi",
-    "Akomodasi",
-    "Konsumsi",
-    "Tiket & Aktivitas",
-    "Guide/Vendor",
-    "Marketing",
-    "Operasional Umum",
-    "Refund Klien",
+    "Beban transportasi",
+    "Beban akomodasi",
+    "Beban konsumsi",
+    "Beban tiket dan aktivitas",
+    "Beban jasa guide dan vendor",
+    "Beban pemasaran",
+    "Beban operasional",
+    "Pengembalian dana pelanggan",
     "Penarikan Pemilik",
     "Pelunasan Pinjaman",
   ].map((name, i) => ({ id: `out-${i}`, name, direction: "out" as const })),

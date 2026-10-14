@@ -1,4 +1,10 @@
 "use client";
+import type { ReactNode } from "react";
+import type { TripPermissions } from "@/lib/trip-sharing";
+import { shareTabs } from "@/lib/trip-sharing";
+import { Toast } from "./toast";
+import { SubmissionReview } from "./submission-review";
+import { Corrections } from "./corrections";
 import { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
@@ -12,7 +18,6 @@ import {
   ArrowUp,
   ArrowDown,
   Trash2,
-  MapPin,
   Save,
   Eye,
   Copy,
@@ -20,6 +25,7 @@ import {
   Phone,
   Mail,
 } from "lucide-react";
+import { PlainNote } from "./plain-note";
 import { ApplyTemplate } from "./p1";
 import { Sharing } from "./sharing";
 import {
@@ -53,6 +59,7 @@ import {
 import { Button } from "./ui/button";
 import { Markdown } from "./markdown";
 import { RichEditor } from "./rich-editor";
+import { Budget } from "./p2";
 import { localTimezone } from "@/lib/time";
 import type { Editor } from "./forms";
 import { CashStats, Ledger, Pagination } from "./dashboard";
@@ -65,6 +72,7 @@ type Props = {
   onEdit: (e: Editor) => void;
   onNavigate: (u: string) => void;
   onDirty: (v: boolean) => void;
+  shared?: { permissions: TripPermissions; finance: ReactNode };
 };
 type ContentDraft = Partial<Pick<Journey, "notes" | "contacts" | "days">>;
 export function Detail({
@@ -75,8 +83,15 @@ export function Detail({
   onEdit: open,
   onNavigate: nav,
   onDirty,
+  shared,
 }: Props) {
-  const [tab, setTab] = useState("overview"),
+  const [tab, setTab] = useState(
+      shared
+        ? Object.keys(shareTabs).find(
+            (k) => shared.permissions[k as keyof TripPermissions] !== "none",
+          ) || "overview"
+        : "overview",
+    ),
     [dirtyAreas, setDirtyAreas] = useState<Record<string, boolean>>({}),
     [drafts, setDrafts] = useState<ContentDraft>({});
   const localDirty = Object.values(dirtyAreas).some(Boolean);
@@ -87,9 +102,11 @@ export function Detail({
     setDrafts({});
     setDirtyAreas({});
   }, [j.version]);
-  const edit =
-    can(s.user, j.kind === "lead" ? "sales" : "trips", true) &&
-    j.lifecycle === "active";
+  const edit = shared
+    ? shared.permissions[tab as keyof TripPermissions] === "edit" &&
+      j.lifecycle === "active"
+    : can(s.user, j.kind === "lead" ? "sales" : "trips", true) &&
+      j.lifecycle === "active";
   function areaDirty(area: string, v: boolean, content?: ContentDraft) {
     setDirtyAreas((prev) => ({ ...prev, [area]: v }));
     if (content) setDrafts((prev) => ({ ...prev, ...content }));
@@ -115,10 +132,15 @@ export function Detail({
     setDirtyAreas({});
     setTab(t);
   }
-  const tabs =
-    j.kind === "lead"
+  const tabs = shared
+    ? Object.entries(shareTabs).filter(
+        ([key]) => shared.permissions[key as keyof TripPermissions] !== "none",
+      )
+    : j.kind === "lead"
       ? [
-          ["overview", "Overview & Notes"],
+          ["overview", "Overview"],
+          ["notes", "Notes"],
+          ["contacts", "Contacts"],
           ["itinerary", "Itinerary Draft"],
         ]
       : [
@@ -127,23 +149,36 @@ export function Detail({
           ["itinerary", "Itinerary"],
           ["contacts", "Contacts"],
           ...(can(s.user, "finance") ? [["finance", "Finance"]] : []),
-          ...(s.user.role === "admin" ? [["sharing", "Share preview"]] : []),
+          ...(can(s.user, "trips", true) ? [["sharing", "Share Trip"]] : []),
         ];
+  useEffect(() => {
+    if (shared && shared.permissions[tab as keyof TripPermissions] === "none") {
+      setTab(
+        Object.keys(shareTabs).find(
+          (k) => shared.permissions[k as keyof TripPermissions] !== "none",
+        ) || "overview",
+      );
+    }
+  }, [shared?.permissions, tab]);
   const pic = s.people.find((p) => p.id === j.pic);
   return (
     <>
-      <button
-        className="back-link"
-        onClick={() => nav("/" + (j.kind === "lead" ? "sales" : "trips"))}
-      >
-        <ArrowLeft size={15} />
-        Kembali ke {j.kind === "lead" ? "Sales" : "Trips"}
-      </button>
+      {!shared && (
+        <button
+          className="back-link"
+          onClick={() => nav("/" + (j.kind === "lead" ? "sales" : "trips"))}
+        >
+          <ArrowLeft size={15} />
+          Kembali ke {j.kind === "lead" ? "Sales" : "Trips"}
+        </button>
+      )}
       <section className="detail-heading">
         <div>
           <div className="card-tags">
             <span className="tag trip">
-              {s.salesStages?.find((x) => x.id === j.stage)?.label || j.stage}
+              {(j.kind === "trip" ? s.tripStages : s.salesStages)?.find(
+                (x) => x.id === j.stage,
+              )?.label || j.stage}
             </span>
             <span className="tag neutral">{j.trip_type || "Custom trip"}</span>
             {j.lifecycle !== "active" && (
@@ -157,7 +192,16 @@ export function Detail({
           </p>
         </div>
         <div className="heading-actions">
-          {edit && (
+          {j.source_lead && can(s.user, "sales") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => nav("/sales/" + j.source_lead)}
+            >
+              Sumber Lead
+            </Button>
+          )}
+          {edit && (!shared || tab === "overview") && (
             <Button
               variant="outline"
               onClick={() =>
@@ -173,17 +217,13 @@ export function Detail({
               <ArrowRight size={16} />
             </Button>
           )}
-          {j.kind === "trip" && s.user.role === "admin" && (
-            <Button
-              variant="outline"
-              disabled
-              title="External sharing belum diaktifkan sampai security gate lulus"
-            >
+          {j.kind === "trip" && can(s.user, "trips", true) && (
+            <Button variant="outline" onClick={() => switchTab("sharing")}>
               <Share2 size={15} />
               Share
             </Button>
           )}
-          {edit && (
+          {edit && !shared && (
             <Button
               variant="ghost"
               onClick={() => open({ kind: "archive", journey: j })}
@@ -220,9 +260,6 @@ export function Detail({
           )}
         </div>
       )}
-      {edit && (
-        <ApplyTemplate s={s} j={j} busy={busy || localDirty} run={run} />
-      )}
       <div className="detail-tabs">
         {tabs.map(([key, label]) => (
           <button
@@ -237,7 +274,7 @@ export function Detail({
       {tab === "sharing" && <Sharing j={j} />}
       {tab === "overview" && (
         <>
-          <div className="detail-overview">
+          <div className="detail-overview detail-overview-simple">
             <article className="panel">
               <div className="panel-heading">
                 <h2>Ringkasan {j.kind === "trip" ? "Trip" : "Lead"}</h2>
@@ -260,16 +297,18 @@ export function Detail({
                     {j.guests || "Belum ditentukan"} {j.guests ? "tamu" : ""}
                   </b>
                 </div>
-                <div>
-                  <small>PIC</small>
-                  <b>
-                    <span className="avatar mini">
-                      {initials(pic?.name || "?")}
-                    </span>
-                    {pic?.name}
-                  </b>
-                </div>
-                {j.kind === "trip" && (
+                {!shared && (
+                  <div>
+                    <small>PIC</small>
+                    <b>
+                      <span className="avatar mini">
+                        {initials(pic?.name || "?")}
+                      </span>
+                      {pic?.name}
+                    </b>
+                  </div>
+                )}
+                {j.kind === "trip" && !shared && (
                   <div>
                     <small>Quoted total · IDR</small>
                     <b>
@@ -279,7 +318,7 @@ export function Detail({
                   </div>
                 )}
               </div>
-              {j.kind === "trip" && (
+              {j.kind === "trip" && !shared && (
                 <div className="assigned-people">
                   <small>Assigned people</small>
                   <div>
@@ -301,65 +340,14 @@ export function Detail({
                 </div>
               )}
             </article>
-            <article className="panel task-panel">
-              <div className="panel-heading">
-                <h2>Trip context</h2>
-                <MapPin size={18} />
-              </div>
-              <div className="context-step">
-                <span className="route-mini-dot" />
-                <div>
-                  <b>
-                    {j.kind === "lead" ? "Opportunity aktif" : "Perjalanan tim"}
-                  </b>
-                  <p>
-                    {j.kind === "lead"
-                      ? "Siapkan kebutuhan klien dan itinerary sebelum conversion."
-                      : "Notes, itinerary, contacts, dan task tersimpan dalam satu konteks."}
-                  </p>
-                </div>
-              </div>
-              {j.source_lead && can(s.user, "sales") && (
-                <button
-                  className="text-button"
-                  onClick={() => nav("/sales/" + j.source_lead)}
-                >
-                  Buka sumber Lead
-                  <ArrowRight size={14} />
-                </button>
-              )}
-              <div className="notice compact">
-                Akses mengikuti privilege modul. PIC bukan batas kerahasiaan
-                antaranggota.
-              </div>
-            </article>
           </div>
-          <Tasks s={s} j={j} edit={edit} busy={busy} run={run} open={open} />
-          {j.kind === "lead" && (
-            <>
-              {localDirty && (
-                <div className="notice">
-                  Simpan di halaman ini akan menyimpan seluruh perubahan notes
-                  dan contacts bersama.
-                </div>
-              )}
-              <Notes
-                j={j}
-                edit={edit}
-                busy={busy}
-                run={saveContent}
-                dirty={(v, d) => areaDirty("notes", v, d)}
-              />
-              <Contacts
-                j={j}
-                edit={edit}
-                busy={busy}
-                run={saveContent}
-                dirty={(v, d) => areaDirty("contacts", v, d)}
-              />
-            </>
+          {!shared && (
+            <Tasks s={s} j={j} edit={edit} busy={busy} run={run} open={open} />
           )}
         </>
+      )}
+      {tab === "tasks" && shared && (
+        <Tasks s={s} j={j} edit={edit} busy={busy} run={run} open={open} />
       )}
       {tab === "notes" && (
         <Notes
@@ -368,16 +356,38 @@ export function Detail({
           busy={busy}
           run={saveContent}
           dirty={(v, d) => areaDirty("notes", v, d)}
+          tools={
+            edit && !shared ? (
+              <ApplyTemplate
+                s={s}
+                j={j}
+                busy={busy || localDirty}
+                run={run}
+                area="notes"
+              />
+            ) : undefined
+          }
         />
       )}
       {tab === "itinerary" && (
-        <Itinerary
-          j={j}
-          edit={edit}
-          busy={busy}
-          run={saveContent}
-          dirty={(v, d) => areaDirty("days", v, d)}
-        />
+        <>
+          {edit && !shared && (
+            <ApplyTemplate
+              s={s}
+              j={j}
+              busy={busy || localDirty}
+              run={run}
+              area="itinerary"
+            />
+          )}
+          <Itinerary
+            j={j}
+            edit={edit}
+            busy={busy}
+            run={saveContent}
+            dirty={(v, d) => areaDirty("days", v, d)}
+          />
+        </>
       )}
       {tab === "contacts" && (
         <Contacts
@@ -388,8 +398,9 @@ export function Detail({
           dirty={(v, d) => areaDirty("contacts", v, d)}
         />
       )}
-      {tab === "finance" && can(s.user, "finance") && (
-        <TripFinance j={j} s={s} open={open} />
+      {tab === "finance" && shared && shared.finance}
+      {tab === "finance" && !shared && can(s.user, "finance") && (
+        <TripFinance j={j} s={s} open={open} run={run} busy={busy} />
       )}
     </>
   );
@@ -450,7 +461,7 @@ function Tasks({
           <h2>
             Tasks <span className="subtle-count">{tasks.length}</span>
           </h2>
-          <p>Pekerjaan ini juga muncul di Home assignee.</p>
+          <p>Task Public terlihat di halaman shared Trip.</p>
         </div>
         {edit && (
           <Button
@@ -473,62 +484,67 @@ function Tasks({
             <div className="task-row-main">
               <b>{t.title}</b>
               {t.description && <p>{t.description}</p>}
-              <small>
-                {s.people.find((p) => p.id === t.assignee)?.name} ·{" "}
-                {shortDate(t.due)}{" "}
+              <small className="task-row-meta">
+                <span>
+                  {t.assignee === "public"
+                    ? "Public"
+                    : s.people.find((p) => p.id === t.assignee)?.name}{" "}
+                  · {shortDate(t.due)}
+                </span>
                 {deadline(t, s.today) && (
-                  <span className="due-badge overdue">
+                  <span
+                    className={`due-badge ${deadline(t, s.today) === "Overdue" ? "overdue" : "soon"}`}
+                  >
                     {deadline(t, s.today)}
                   </span>
                 )}
               </small>
             </div>
-            <select
-              aria-label={`Status ${t.title}`}
-              value={t.status}
-              disabled={
-                busy ||
-                (!edit && t.assignee !== s.user.id && s.user.role !== "admin")
-              }
-              onChange={(e) =>
-                run({
-                  action: "task_status",
-                  id: t.id,
-                  version: t.version,
-                  data: { status: e.target.value },
-                })
-              }
-            >
-              {taskStages.map((x) => (
-                <option key={x}>{x}</option>
-              ))}
-            </select>
-            {edit && (
-              <>
-                <button
-                  className="text-button tiny"
-                  onClick={() =>
-                    open({ kind: "task", task: t, context: t.context })
-                  }
-                >
-                  Edit
-                </button>
-                <button
-                  className="icon-button negative"
-                  aria-label={`Cancel ${t.title}`}
-                  onClick={() => {
-                    if (confirm("Cancel task ini?"))
-                      run({
-                        action: "cancel_task",
-                        id: t.id,
-                        version: t.version,
-                      });
-                  }}
-                >
-                  <Trash2 size={15} />
-                </button>
-              </>
-            )}
+            <div className="task-row-actions">
+              <select
+                aria-label={`Status ${t.title}`}
+                value={t.status}
+                disabled={busy || (!edit && t.assignee !== s.user.id)}
+                onChange={(e) =>
+                  run({
+                    action: "task_status",
+                    id: t.id,
+                    version: t.version,
+                    data: { status: e.target.value },
+                  })
+                }
+              >
+                {taskStages.map((x) => (
+                  <option key={x}>{x}</option>
+                ))}
+              </select>
+              {edit && (
+                <>
+                  <button
+                    className="text-button tiny"
+                    onClick={() =>
+                      open({ kind: "task", task: t, context: t.context })
+                    }
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="icon-button negative"
+                    aria-label={`Cancel ${t.title}`}
+                    onClick={() => {
+                      if (confirm("Cancel task ini?"))
+                        run({
+                          action: "cancel_task",
+                          id: t.id,
+                          version: t.version,
+                        });
+                    }}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         ))
       ) : (
@@ -547,7 +563,14 @@ type ContentProps = {
   run: (c: Command) => Promise<boolean>;
   dirty: (v: boolean, content?: ContentDraft) => void;
 };
-function Notes({ j, edit, busy, run, dirty }: ContentProps) {
+function Notes({
+  j,
+  edit,
+  busy,
+  run,
+  dirty,
+  tools,
+}: ContentProps & { tools?: React.ReactNode }) {
   const [notes, setNotes] = useState<Note[]>(structuredClone(j.notes)),
     [selected, setSelected] = useState(j.notes[0]?.id || ""),
     [changed, setChanged] = useState(false);
@@ -606,6 +629,7 @@ function Notes({ j, edit, busy, run, dirty }: ContentProps) {
           {changed && <CopyChanges value={notes} />}
         </div>
       </div>
+      {tools}
       <div className="note-layout">
         <aside className="note-list">
           {notes.map((n) => (
@@ -1021,13 +1045,16 @@ function ItineraryRow({
       </div>
       <div>
         {edit ? (
-          <RichEditor
+          <textarea
+            className="activity-description"
+            rows={3}
             value={item.description}
-            label="Activity description"
-            onChange={(value) => onChange("description", value)}
+            aria-label="Activity description"
+            placeholder="Catatan aktivitas atau link..."
+            onChange={(e) => onChange("description", e.target.value)}
           />
         ) : (
-          <Markdown body={item.description} />
+          <PlainNote body={item.description} />
         )}
         <div className="item-actions">
           {edit && (
@@ -1067,7 +1094,12 @@ function ItineraryRow({
     </div>
   );
 }
-function Contacts({ j, edit, busy, run, dirty }: ContentProps) {
+export function Contacts({ j, edit: canEdit, busy, run, dirty, sources, onSave }: ContentProps & {
+  sources?: Record<string, { label: string; url?: string }>;
+  onSave?: (contacts: Contact[]) => Promise<boolean>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const edit = canEdit && editing;
   const [contacts, setContacts] = useState<Contact[]>(
       structuredClone(j.contacts),
     ),
@@ -1075,6 +1107,7 @@ function Contacts({ j, edit, busy, run, dirty }: ContentProps) {
   useEffect(() => {
     setContacts(structuredClone(j.contacts));
     setChanged(false);
+    setEditing(false);
     dirty(false);
   }, [j.version]);
   function update(next: Contact[]) {
@@ -1093,6 +1126,7 @@ function Contacts({ j, edit, busy, run, dirty }: ContentProps) {
           </p>
         </div>
         <div className="row-actions">
+          {canEdit && !editing && <Button size="sm" variant="outline" onClick={() => setEditing(true)}>Edit contacts</Button>}
           {edit && (
             <>
               <Button
@@ -1121,14 +1155,15 @@ function Contacts({ j, edit, busy, run, dirty }: ContentProps) {
                 disabled={!changed || busy}
                 onClick={async () => {
                   if (
-                    await run({
+                    await (onSave ? onSave(contacts) : run({
                       action: "content",
                       id: j.id,
                       version: j.version,
                       data: { contacts },
-                    })
+                    }))
                   ) {
                     setChanged(false);
+                    setEditing(false);
                     dirty(false);
                   }
                 }}
@@ -1137,96 +1172,110 @@ function Contacts({ j, edit, busy, run, dirty }: ContentProps) {
                 Simpan contacts
               </Button>
               {changed && <CopyChanges value={contacts} />}
+              <Button size="sm" variant="ghost" disabled={busy} onClick={() => {
+                if (changed && !confirm("Buang perubahan contacts?")) return;
+                setContacts(structuredClone(j.contacts)); setChanged(false); setEditing(false); dirty(false);
+              }}>Batal</Button>
             </>
           )}
         </div>
       </div>
-      <div className="contacts-grid">
-        {contacts.map((c) => (
-          <article className="contact-card" key={c.id}>
-            {edit ? (
-              <>
-                <div className="contact-top">
-                  <strong>Contact</strong>
-                  <button
-                    className="icon-button"
-                    aria-label="Hapus contact"
-                    onClick={() => {
-                      if (confirm("Hapus contact ini?"))
-                        update(contacts.filter((x) => x.id !== c.id));
-                    }}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-                <div className="form-grid">
-                  {(
-                    ["name", "role", "organization", "phone", "email"] as const
-                  ).map((key) => (
-                    <label key={key}>
-                      {
-                        {
-                          name: "Nama *",
-                          role: "Role",
-                          organization: "Organisasi",
-                          phone: "Telepon",
-                          email: "Email",
-                        }[key]
-                      }
+      <div className="table-wrap">
+        <table className="contacts-table">
+          <thead>
+            <tr>
+              <th>Nama</th>
+              <th>Telepon / Email</th>
+              <th>Note</th>
+              {sources && <th>Sumber</th>}
+              {edit && <th />}
+            </tr>
+          </thead>
+          <tbody>
+            {contacts.map((c) => {
+              const field = (
+                key: "name" | "phone" | "email" | "note",
+                value: string,
+              ) =>
+                update(
+                  contacts.map((x) =>
+                    x.id === c.id ? { ...x, [key]: value } : x,
+                  ),
+                );
+              return (
+                <tr key={c.id}>
+                  <td>
+                    {edit ? (
                       <input
-                        type={key === "email" ? "email" : "text"}
-                        value={c[key]}
-                        onChange={(e) =>
-                          update(
-                            contacts.map((x) =>
-                              x.id === c.id
-                                ? { ...x, [key]: e.target.value }
-                                : x,
-                            ),
-                          )
-                        }
+                        aria-label="Nama contact"
+                        maxLength={200}
+                        value={c.name}
+                        onChange={(e) => field("name", e.target.value)}
                       />
-                    </label>
-                  ))}
-                </div>
-                <label>
-                  Internal note
-                  <textarea
-                    value={c.note}
-                    onChange={(e) =>
-                      update(
-                        contacts.map((x) =>
-                          x.id === c.id ? { ...x, note: e.target.value } : x,
-                        ),
-                      )
-                    }
-                  />
-                </label>
-              </>
-            ) : (
-              <>
-                <span className="avatar">{initials(c.name)}</span>
-                <h3>{c.name}</h3>
-                <p>
-                  {c.role} {c.organization && `· ${c.organization}`}
-                </p>
-                {c.phone && (
-                  <p>
-                    <Phone size={14} />
-                    {c.phone}
-                  </p>
-                )}
-                {c.email && (
-                  <p>
-                    <Mail size={14} />
-                    {c.email}
-                  </p>
-                )}
-                <p>{c.note}</p>
-              </>
-            )}
-          </article>
-        ))}
+                    ) : (
+                      <b>{c.name}</b>
+                    )}
+                  </td>
+                  <td>
+                    {edit ? (
+                      <div className="contact-channels">
+                        <input
+                          aria-label="Telepon contact"
+                          placeholder="Telepon"
+                          maxLength={80}
+                          value={c.phone}
+                          onChange={(e) => field("phone", e.target.value)}
+                        />
+                        <input
+                          aria-label="Email contact"
+                          placeholder="Email"
+                          type="email"
+                          value={c.email}
+                          onChange={(e) => field("email", e.target.value)}
+                        />
+                      </div>
+                    ) : (
+                      <div className="contact-channels">
+                        {c.phone && <span>{c.phone}</span>}
+                        {c.email && <span>{c.email}</span>}
+                        {!c.phone && !c.email && "-"}
+                      </div>
+                    )}
+                  </td>
+                  <td>
+                    {edit ? (
+                      <textarea
+                        aria-label="Note contact"
+                        rows={2}
+                        maxLength={5000}
+                        value={c.note}
+                        onChange={(e) => field("note", e.target.value)}
+                      />
+                    ) : (
+                      <PlainNote body={c.note} />
+                    )}
+                  </td>
+                  {sources && <td>{sources[c.id]?.url ? <a className="table-link" href={sources[c.id].url}>{sources[c.id].label}</a> : sources[c.id]?.label || "Internal"}</td>}
+                  {edit && (
+                    <td>
+                      <button
+                        className="icon-button"
+                        aria-label={`Hapus ${c.name}`}
+                        disabled={busy}
+                        onClick={() => {
+                          if (confirm("Hapus contact ini?"))
+                            update(contacts.filter((x) => x.id !== c.id));
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
       {!contacts.length && (
         <div className="empty-state small">
@@ -1244,10 +1293,14 @@ function TripFinance({
   j,
   s,
   open,
+  run,
+  busy,
 }: {
   j: Journey;
   s: Snapshot;
   open: (e: Editor) => void;
+  run: (c: Command) => Promise<boolean>;
+  busy: boolean;
 }) {
   const [data, setData] = useState(s),
     [filters, setFilters] = useState<Filters>({ status: "posted" }),
@@ -1280,13 +1333,6 @@ function TripFinance({
       .catch((e) => {
         if (seq !== sequence.current) return;
         setError(e.message);
-        setData({
-          ...s,
-          transactions: [],
-          categories: [],
-          cashRows: [],
-          totals: { moneyIn: "0", moneyOut: "0", net: "0" },
-        });
       })
       .finally(() => {
         if (seq === sequence.current) setLoading(false);
@@ -1297,29 +1343,17 @@ function TripFinance({
   }, [j.id, JSON.stringify(filters), JSON.stringify(s.transactions)]);
   return (
     <>
+      <SubmissionReview s={s} run={run} busy={busy} />
       <div className="section-toolbar">
         <h2>Kas Trip · satu ledger</h2>
         {can(s.user, "finance", true) && (
-          <div className="row-actions">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                open({ kind: "transaction", journey: j, direction: "out" })
-              }
-            >
-              Money Out
-            </Button>
-            <Button
-              size="sm"
-              onClick={() =>
-                open({ kind: "transaction", journey: j, direction: "in" })
-              }
-            >
-              <Plus size={14} />
-              Money In
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            onClick={() => open({ kind: "transaction", journey: j })}
+          >
+            <Plus size={14} />
+            Record transaction
+          </Button>
         )}
       </div>
       <div className="finance-filters">
@@ -1363,15 +1397,11 @@ function TripFinance({
         </Button>
       </div>
       {error && <div className="error-box">{error}</div>}
-      {loading && (
-        <div className="notice" role="status">
-          Memuat kas terbaru; periode di bawah mengikuti data terakhir yang
-          berhasil dimuat.
-        </div>
-      )}
-      {!error && hasLoaded && (
+      {loading && <Toast pending message="Memuat kas terbaru..." />}
+      {hasLoaded && (
         <>
           <CashStats s={data} period={periodLabel(appliedFilters)} />
+          <Corrections s={data} run={run} busy={busy} />
           <Ledger
             s={data}
             canEdit={can(s.user, "finance", true)}
@@ -1384,6 +1414,7 @@ function TripFinance({
           />
         </>
       )}
+      <Budget s={s} tripId={j.id} run={run} busy={busy} />
       <div className="notice">
         Transaksi Trip tetap tersimpan saat completed, cancelled, atau archived.
         Hasil kas bukan profit akuntansi.

@@ -1,4 +1,5 @@
 "use client";
+import { minorUnits, decimalString } from "@/lib/money";
 import { useEffect, useState } from "react";
 import {
   BarChart,
@@ -15,9 +16,11 @@ import type {
   Template,
   Journey,
 } from "@/lib/model";
-import { moneyLabel } from "@/lib/format";
+import { moneyLabel, can } from "@/lib/format";
 import { Button } from "./ui/button";
 import { RichEditor } from "./rich-editor";
+import { Toast } from "./toast";
+import { TripPipeline, AuditDiff } from "./p2";
 import { localTimezone, localTimestamp } from "@/lib/time";
 
 function useInsights(
@@ -32,7 +35,7 @@ function useInsights(
   const key = JSON.stringify(filters);
   useEffect(() => {
     const controller = new AbortController();
-    setState({ data: null, error: "", loading: true });
+    setState((previous) => ({ ...previous, error: "", loading: true }));
     const q = new URLSearchParams({
       mode,
       timezone: localTimezone(),
@@ -58,7 +61,7 @@ function useInsights(
 }
 function Status({ state }: { state: { loading: boolean; error: string } }) {
   return state.loading ? (
-    <p role="status">Memuat…</p>
+    <Toast pending message="Memuat hasil terbaru..." />
   ) : state.error ? (
     <div role="alert" className="notice">
       {state.error}
@@ -134,7 +137,10 @@ export function Calendar({
                 .map((r: any) => (
                   <button key={r.id} onClick={() => navigate("/trips/" + r.id)}>
                     {r.name}
-                    <small>{r.stage}</small>
+                    <small>
+                      {s.tripStages?.find((st) => st.id === r.stage)?.label ||
+                        r.stage}
+                    </small>
                   </button>
                 ))}
             </div>
@@ -259,9 +265,9 @@ export function SalesAnalytics({
   );
 }
 export function percentage(current: string, previous: string) {
-  const p = BigInt(previous);
+  const p = minorUnits(previous);
   if (p <= 0n) return "N/A";
-  const rounded = ((BigInt(current) - p) * 10000n) / p;
+  const rounded = ((minorUnits(current) - p) * 10000n) / p;
   return `${rounded < 0n ? "−" : ""}${(rounded < 0n ? -rounded : rounded) / 100n}.${String((rounded < 0n ? -rounded : rounded) % 100n).padStart(2, "0")}%`;
 }
 export function Comparison({ s }: { s: Snapshot }) {
@@ -273,8 +279,8 @@ export function Comparison({ s }: { s: Snapshot }) {
   });
   const d = state.data;
   const fields = [
-    { key: "moneyIn", label: "Money In" },
-    { key: "moneyOut", label: "Money Out" },
+    { key: "moneyIn", label: "Income / Receipts" },
+    { key: "moneyOut", label: "Expense / Payments" },
     { key: "net", label: "Hasil kas" },
   ];
   return (
@@ -333,9 +339,10 @@ export function Comparison({ s }: { s: Snapshot }) {
                     <td>{moneyLabel(d.current[f.key])}</td>
                     <td>
                       {moneyLabel(
-                        (
-                          BigInt(d.current[f.key]) - BigInt(d.previous[f.key])
-                        ).toString(),
+                        decimalString(
+                          minorUnits(d.current[f.key]) -
+                            minorUnits(d.previous[f.key]),
+                        ),
                       )}
                     </td>
                     <td>
@@ -385,7 +392,7 @@ export function Comparison({ s }: { s: Snapshot }) {
 }
 export function AuditViewer({ s }: { s: Snapshot }) {
   return (
-    <div className="table-wrap">
+    <div className="table-wrap audit-history">
       <table>
         <thead>
           <tr>
@@ -400,14 +407,15 @@ export function AuditViewer({ s }: { s: Snapshot }) {
           {s.audit?.map((a) => (
             <tr key={a.id}>
               <td>{localTimestamp(a.at)}</td>
-              <td>{s.people.find((p) => p.id === a.actor)?.name || a.actor}</td>
+              <td>
+                {a.metadata.automatic
+                  ? "System"
+                  : s.people.find((p) => p.id === a.actor)?.name || a.actor}
+              </td>
               <td>{a.action}</td>
               <td>{a.entity}</td>
               <td>
-                <details>
-                  <summary>Metadata</summary>
-                  <pre>{JSON.stringify(a.metadata, null, 2)}</pre>
-                </details>
+                <AuditDiff metadata={a.metadata} />
               </td>
             </tr>
           ))}
@@ -428,17 +436,38 @@ export function Configuration({
   busy: boolean;
 }) {
   const [template, setTemplate] = useState<Template | null>(null),
-    [kind, setKind] = useState<Template["kind"]>("lead_note"),
+    [kind, setKind] = useState<Template["kind"]>(
+      can(s.user, "sales", true)
+        ? "lead_note"
+        : can(s.user, "trips", true)
+          ? "trip_note"
+          : "internal_doc",
+    ),
     [content, setContent] = useState(""),
     [days, setDays] = useState<
       { title: string; items: { name: string; description: string }[] }[]
     >([{ title: "", items: [] }]);
   const [formError, setFormError] = useState("");
-  const [section, setSection] = useState("stages");
+  const [section, setSection] = useState(
+    can(s.user, "sales", true)
+      ? "stages"
+      : can(s.user, "trips", true)
+        ? "trip-stages"
+        : can(s.user, "finance", true)
+          ? "categories"
+          : "templates",
+  );
   const stages = s.salesStages || [];
   const edit = (t: Template | null) => {
     setTemplate(t);
-    setKind(t?.kind || "lead_note");
+    setKind(
+      t?.kind ||
+        (can(s.user, "sales", true)
+          ? "lead_note"
+          : can(s.user, "trips", true)
+            ? "trip_note"
+            : "internal_doc"),
+    );
     setContent(typeof t?.content === "string" ? t.content : "");
     setDays(
       Array.isArray(t?.content)
@@ -452,21 +481,34 @@ export function Configuration({
       <div className="configuration-tabs" aria-label="Bagian konfigurasi">
         {[
           ["stages", "Sales stages"],
+          ["trip-stages", "Pipeline Trips"],
           ["categories", "Kategori Finance"],
           ["templates", "Templates"],
-        ].map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            aria-pressed={section === id}
-            onClick={() => {
-              setSection(id);
-              setFormError("");
-            }}
-          >
-            {label}
-          </button>
-        ))}
+        ]
+          .filter(([id]) =>
+            id === "stages"
+              ? can(s.user, "sales", true)
+              : id === "trip-stages"
+                ? can(s.user, "trips", true)
+                : id === "categories"
+                  ? can(s.user, "finance", true)
+                  : ["sales", "trips", "docs"].some((m) =>
+                      can(s.user, m as "sales" | "trips" | "docs", true),
+                    ),
+          )
+          .map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={section === id}
+              onClick={() => {
+                setSection(id);
+                setFormError("");
+              }}
+            >
+              {label}
+            </button>
+          ))}
       </div>
       {formError && <p role="alert">{formError}</p>}
       <section className="configuration-list" hidden={section !== "stages"}>
@@ -592,6 +634,9 @@ export function Configuration({
           <Button disabled={busy}>Tambah stage</Button>
         </form>
       </section>
+      <section hidden={section !== "trip-stages"}>
+        <TripPipeline s={s} run={run} busy={busy} />
+      </section>
       <section className="configuration-list" hidden={section !== "categories"}>
         <h2>Kategori Finance</h2>
         <p>
@@ -661,8 +706,8 @@ export function Configuration({
             placeholder="Kategori baru"
           />
           <select name="direction" aria-label="Arah kategori">
-            <option value="in">Money In</option>
-            <option value="out">Money Out</option>
+            <option value="in">Income / Receipts</option>
+            <option value="out">Expense / Payments</option>
           </select>
           <Button disabled={busy}>Tambah kategori</Button>
         </form>
@@ -682,12 +727,24 @@ export function Configuration({
             }
           >
             <option value="">Template baru</option>
-            {s.templates?.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-                {!t.active ? " (inactive)" : ""}
-              </option>
-            ))}
+            {s.templates
+              ?.filter((t) =>
+                can(
+                  s.user,
+                  t.kind === "lead_note"
+                    ? "sales"
+                    : t.kind === "internal_doc"
+                      ? "docs"
+                      : "trips",
+                  true,
+                ),
+              )
+              .map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                  {!t.active ? " (inactive)" : ""}
+                </option>
+              ))}
           </select>
           <Button variant="outline" onClick={() => edit(null)}>
             Baru
@@ -730,9 +787,18 @@ export function Configuration({
               value={kind}
               onChange={(e) => setKind(e.target.value as typeof kind)}
             >
-              <option value="lead_note">Lead note</option>
-              <option value="trip_note">Trip note</option>
-              <option value="itinerary">Itinerary</option>
+              {can(s.user, "sales", true) && (
+                <option value="lead_note">Lead note</option>
+              )}
+              {can(s.user, "trips", true) && (
+                <>
+                  <option value="trip_note">Trip note</option>
+                  <option value="itinerary">Itinerary</option>
+                </>
+              )}
+              {can(s.user, "docs", true) && (
+                <option value="internal_doc">Internal document</option>
+              )}
             </select>
           </label>
           <label>
@@ -883,53 +949,64 @@ export function ApplyTemplate({
   j,
   run,
   busy,
+  area,
 }: {
   s: Snapshot;
   j: Journey;
   run: (c: Command) => Promise<boolean>;
   busy: boolean;
+  area: "notes" | "itinerary";
 }) {
   return (
-    <form
-      className="configuration-row"
-      onSubmit={(e) => {
-        e.preventDefault();
-        const f = new FormData(e.currentTarget);
-        if (
-          confirm(
-            "Terapkan template? Replace mengganti seluruh notes atau itinerary; Append menambah salinan baru.",
+    <details className="template-picker">
+      <summary>
+        {area === "notes" ? "Note template" : "Itinerary template"}
+      </summary>
+      <form
+        className="template-controls"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const f = new FormData(e.currentTarget);
+          if (
+            confirm(
+              "Terapkan template? Replace mengganti seluruh notes atau itinerary; Append menambah salinan baru.",
+            )
           )
-        )
-          void run({
-            action: "apply_template",
-            id: j.id,
-            version: j.version,
-            data: { template: f.get("template"), mode: f.get("mode") },
-          });
-      }}
-    >
-      <select name="template" aria-label="Template" required>
-        <option value="">Pilih template…</option>
-        {s.templates
-          ?.filter(
-            (t) =>
-              t.active &&
-              (t.kind === "itinerary" ||
-                t.kind === (j.kind === "lead" ? "lead_note" : "trip_note")),
-          )
-          .map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name} · {t.kind}
-            </option>
-          ))}
-      </select>
-      <select name="mode" aria-label="Mode penerapan">
-        <option value="append">Append</option>
-        <option value="replace">Replace</option>
-      </select>
-      <Button disabled={busy} variant="outline">
-        Terapkan template
-      </Button>
-    </form>
+            void run({
+              action: "apply_template",
+              id: j.id,
+              version: j.version,
+              data: { template: f.get("template"), mode: f.get("mode") },
+            });
+        }}
+      >
+        <select name="template" aria-label="Template" required disabled={busy}>
+          <option value="">Pilih template…</option>
+          {s.templates
+            ?.filter(
+              (t) =>
+                t.active &&
+                t.kind ===
+                  (area === "itinerary"
+                    ? "itinerary"
+                    : j.kind === "lead"
+                      ? "lead_note"
+                      : "trip_note"),
+            )
+            .map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+        </select>
+        <select name="mode" aria-label="Mode penerapan" disabled={busy}>
+          <option value="append">Append</option>
+          <option value="replace">Replace</option>
+        </select>
+        <Button disabled={busy} variant="outline" size="sm">
+          Terapkan template
+        </Button>
+      </form>
+    </details>
   );
 }

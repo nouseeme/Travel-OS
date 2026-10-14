@@ -14,7 +14,11 @@ const schema = z.object({
     "regenerate",
     "revoke",
   ]),
-  trip: z.uuid(),
+  trip: z.uuid().optional(),
+  permissions: z
+    .record(z.string(), z.enum(["none", "view", "edit"]))
+    .optional(),
+  doc: z.uuid().optional(),
   link: z.uuid().optional(),
   version: z.number().int().positive().optional(),
   days: z.number().int().min(1).max(30).default(7),
@@ -38,32 +42,38 @@ export async function POST(request: Request) {
   try {
     originCheck(request);
     const d = schema.parse(await body(request));
-    if (
-      ["create", "publish", "regenerate"].includes(d.action) &&
-      process.env.SHARING_ENABLED !== "true"
-    )
-      throw new AppError("Sharing security gate belum diaktifkan.", 403);
+    if ((!d.trip && !d.doc) || (d.trip && d.doc))
+      throw new AppError("Pilih Trip atau dokumen.");
     const client = await verifiedClient();
     const token = ["create", "regenerate"].includes(d.action)
       ? randomBytes(32).toString("hex")
       : null;
-    const { data, error } = await client.rpc("app_share_manage", {
-      action_name: d.action,
-      trip_id: d.trip,
-      link_id: d.link || null,
-      expected_version: d.version || null,
-      selection: d.selection,
-      raw_token: token,
-      expiry_days: d.days,
-    });
+    const { data, error } = await client.rpc(
+      d.doc ? "app_doc_share_manage" : "app_trip_share_manage",
+      {
+        action_name: d.action,
+        ...(d.doc ? { doc_id: d.doc } : { trip_id: d.trip }),
+        link_id: d.link || null,
+        expected_version: d.version || null,
+        ...(!d.doc ? { permissions: d.permissions || {} } : {}),
+        raw_token: token,
+        expiry_days: d.days,
+      },
+    );
     if (error) dbError(error);
     return NextResponse.json(
       {
         ...data,
         ...(d.action === "list"
-          ? { enabled: data.enabled && process.env.SHARING_ENABLED === "true" }
+          ? {
+              enabled: data.enabled,
+            }
           : {}),
-        ...(token ? { url: `${process.env.APP_URL}/share/${token}` } : {}),
+        ...(token
+          ? {
+              url: `${process.env.APP_URL || new URL(request.url).origin}/${d.doc ? "share" : "shared-trip"}/${token}`,
+            }
+          : {}),
       },
       {
         headers: {

@@ -1,10 +1,12 @@
 import { z } from "zod";
+import { minorUnits, decimalString, formatIDR, MAX_IDR } from "./money";
 import {
   type Person,
   type Module,
   type Journey,
   type Task,
   type Transaction,
+  type Category,
   type Filters,
   categories,
 } from "./model";
@@ -20,10 +22,9 @@ export class AppError extends Error {
 export function allow(user: Person, module: Module, edit = false) {
   return (
     user.status === "active" &&
-    (user.role === "admin" ||
-      (edit
-        ? user.privileges[module] === "edit"
-        : user.privileges[module] !== "none"))
+    (edit
+      ? user.privileges[module] === "edit"
+      : ["view", "edit"].includes(user.privileges[module] || "none"))
   );
 }
 export function requireAccess(user: Person, module?: Module, edit = false) {
@@ -53,19 +54,19 @@ export function dueLabel(task: Pick<Task, "due" | "status">, today: string) {
         : "";
 }
 export function rupiah(amount: string | bigint) {
-  return `Rp ${BigInt(amount || "0").toLocaleString("id-ID")}`;
+  return formatIDR(String(amount || "0"));
 }
 export function money(value: unknown, positive = true) {
   if (
     typeof value !== "string" ||
-    !/^\d+$/.test(value) ||
-    BigInt(value) > 9223372036854775807n ||
-    (positive && BigInt(value) < 1n)
+    !/^\d+(\.\d{1,2})?$/.test(value) ||
+    minorUnits(value) > MAX_IDR ||
+    (positive && minorUnits(value) < 1n)
   )
     throw new AppError(
-      "Masukkan rupiah utuh dengan digit saja (contoh 1250000), tanpa titik, koma, atau desimal.",
+      "Masukkan nominal IDR positif dengan maksimal 2 desimal.",
     );
-  return BigInt(value).toString();
+  return decimalString(minorUnits(value));
 }
 export function date(value: unknown, required = true) {
   if (!value && !required) return "";
@@ -157,7 +158,10 @@ export function transactionMatches(t: Transaction, f: Filters) {
     (!f.category || t.category === f.category) &&
     (!f.trip || (f.trip === "general" ? !t.trip : t.trip === f.trip)) &&
     (!f.status || f.status === "all" || t.status === f.status) &&
-    (!f.search || t.description.toLowerCase().includes(f.search.toLowerCase()))
+    (!f.search ||
+      `${t.title || ""} ${t.description}`
+        .toLowerCase()
+        .includes(f.search.toLowerCase()))
   );
 }
 export function totals(rows: Transaction[]) {
@@ -165,8 +169,14 @@ export function totals(rows: Transaction[]) {
     b = 0n;
   for (const t of rows)
     if (t.status === "posted")
-      t.direction === "in" ? (a += BigInt(t.amount)) : (b += BigInt(t.amount));
-  return { moneyIn: String(a), moneyOut: String(b), net: String(a - b) };
+      t.direction === "in"
+        ? (a += minorUnits(t.amount))
+        : (b += minorUnits(t.amount));
+  return {
+    moneyIn: decimalString(a),
+    moneyOut: decimalString(b),
+    net: decimalString(a - b),
+  };
 }
 export function csvCell(v: unknown) {
   let s = String(v ?? "");
@@ -177,6 +187,7 @@ export function csv(
   rows: Transaction[],
   journeys: Journey[],
   people: Person[],
+  categoryRows: Category[] = categories,
 ) {
   return (
     "\uFEFF" +
@@ -188,6 +199,7 @@ export function csv(
         "Amount IDR",
         "Category",
         "Trip",
+        "Title",
         "Description",
         "Status",
         "Created by",
@@ -202,10 +214,11 @@ export function csv(
         t.date,
         t.direction,
         t.amount,
-        categories.find((c) => c.id === t.category)?.name,
+        categoryRows.find((c) => c.id === t.category)?.name,
         t.trip
           ? journeys.find((j) => j.id === t.trip)?.name || t.trip
           : "General",
+        t.title || "",
         t.description,
         t.status,
         people.find((p) => p.id === t.created_by)?.name,

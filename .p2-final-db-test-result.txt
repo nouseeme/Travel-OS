@@ -23,3 +23,18 @@ PASS revoked/superseded invitation cannot activate through an old Auth session
 PASS valid invitation activates exactly once; provider metadata cannot grant admin
 PASS expired invitation denied before password activation
 PASS conversion copies real draft documents without cash entries
+PASS 1,000-row ledger is paginated while totals and CSV use all matching rows
+PASS stale privilege edits cannot restore an old permission set
+PASS historical PIC can be archived and restore requires an eligible replacement
+PASS P1 stable stages rename, default, retire migration and stale edit
+PASS P1 templates copy new IDs, append/replace, reject stale and malformed content
+PASS P1 category history retained and inactive category prevents new entries
+PASS P1 Calendar and comparison enforce privileges, dates and saved preferences
+PASS P1 sharing whitelist, default gate, snapshot isolation and revocation
+PASS manual invitation readiness is service-only and generation-checked
+PASS P1 Home date filters run before card limits and Calendar includes final day
+PASS local timezone snapshot, instant range and future-date validation agree
+PASS P2 Trip stages preserve IDs, enforce defaults, retire atomically and guide conversion
+PASS P2 budgets are exact plans, exclude void cash, reject stale writes and audit selected fields
+PASS P2 Finance projections and pipeline writes obey module privileges
+Database regression: 35 scenarios passed (embedded PostgreSQL; hosted Auth/email/concurrency remain separate gates).
