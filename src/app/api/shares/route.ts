@@ -19,6 +19,7 @@ const schema = z.object({
     .record(z.string(), z.enum(["none", "view", "edit"]))
     .optional(),
   doc: z.uuid().optional(),
+  directory: z.boolean().optional(),
   link: z.uuid().optional(),
   version: z.number().int().positive().optional(),
   days: z.number().int().min(1).max(30).default(7),
@@ -42,20 +43,24 @@ export async function POST(request: Request) {
   try {
     originCheck(request);
     const d = schema.parse(await body(request));
-    if ((!d.trip && !d.doc) || (d.trip && d.doc))
+    if ([d.trip, d.doc, d.directory].filter(Boolean).length !== 1)
       throw new AppError("Pilih Trip atau dokumen.");
     const client = await verifiedClient();
     const token = ["create", "regenerate"].includes(d.action)
       ? randomBytes(32).toString("hex")
       : null;
     const { data, error } = await client.rpc(
-      d.doc ? "app_doc_share_manage" : "app_trip_share_manage",
+      d.directory
+        ? "app_contacts_share_manage"
+        : d.doc
+          ? "app_doc_share_manage"
+          : "app_trip_share_manage",
       {
         action_name: d.action,
-        ...(d.doc ? { doc_id: d.doc } : { trip_id: d.trip }),
+        ...(d.directory ? {} : d.doc ? { doc_id: d.doc } : { trip_id: d.trip }),
         link_id: d.link || null,
-        expected_version: d.version || null,
-        ...(!d.doc ? { permissions: d.permissions || {} } : {}),
+        ...(!d.directory ? { expected_version: d.version || null } : {}),
+        ...(!d.doc && !d.directory ? { permissions: d.permissions || {} } : {}),
         raw_token: token,
         expiry_days: d.days,
       },
@@ -71,7 +76,7 @@ export async function POST(request: Request) {
           : {}),
         ...(token
           ? {
-              url: `${process.env.APP_URL || new URL(request.url).origin}/${d.doc ? "share" : "shared-trip"}/${token}`,
+              url: `${process.env.APP_URL || new URL(request.url).origin}/${d.doc || d.directory ? "share" : "shared-trip"}/${token}`,
             }
           : {}),
       },

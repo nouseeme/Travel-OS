@@ -7,7 +7,8 @@ import { Detail } from "./detail";
 import { Button } from "./ui/button";
 import { Modal } from "./ui/dialog";
 import { Toast } from "./toast";
-import { ProductBrand, CompanyIdentity } from "./brand";
+import { CompanyIdentity } from "./brand";
+import { PlatformFooter } from "./platform-credit";
 import { MoneyInput } from "./money-input";
 import { dateInZone, localTimezone } from "@/lib/time";
 import { moneyLabel, shortDate } from "@/lib/format";
@@ -115,9 +116,10 @@ export function SharedTrip({ token }: { token: string }) {
   if (!data)
     return (
       <div className="auth-page">
-        <ProductBrand />
+        <CompanyIdentity logoOnly />
         <h1>{loading ? "Memuat Trip…" : "Link tidak tersedia"}</h1>
         {error && <p role="alert">{error}</p>}
+        <PlatformFooter />
       </div>
     );
   const j = data.journey;
@@ -206,10 +208,7 @@ export function SharedTrip({ token }: { token: string }) {
   return (
     <div className="shared-trip-shell">
       <header className="shared-trip-header">
-        <div className="brand">
-          <ProductBrand />
-        </div>
-        <CompanyIdentity />
+        <CompanyIdentity logoOnly />
         <Button
           variant="outline"
           disabled={loading || busy || dirty || !!editor}
@@ -236,6 +235,7 @@ export function SharedTrip({ token }: { token: string }) {
           shared={{ permissions: data.permissions, finance }}
         />
       </main>
+      <PlatformFooter />
       {loading ? (
         <Toast pending message="Memuat hasil terbaru…" />
       ) : (

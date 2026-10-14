@@ -52,8 +52,10 @@ import { Board } from "./board";
 import { Forms, type Editor } from "./forms";
 import { Detail } from "./detail";
 import { ProductBrand, CompanyIdentity } from "./brand";
+import { PlatformCredit, PlatformFooter } from "./platform-credit";
 import { Budget } from "./p2";
 import { InternalDocs } from "./internal-docs";
+import { InternalContacts } from "./internal-contacts";
 import { ClickableRow } from "./clickable-row";
 import { BreadcrumbPicker } from "./breadcrumb-picker";
 import { TransactionDetail } from "./transaction-detail";
@@ -108,6 +110,7 @@ export function Dashboard() {
     ),
     [financeTab, setFinanceTab] = useState("transactions"),
     [journeyTab, setJourneyTab] = useState("board"),
+    [internalTab, setInternalTab] = useState("docs"),
     [appliedFilters, setAppliedFilters] = useState<Filters>({}),
     [dirty, setDirty] = useState(false);
   const requestSequence = useRef(0),
@@ -291,6 +294,7 @@ export function Dashboard() {
     return (
       <div className="auth-page">
         <h1>Halaman tidak ditemukan.</h1>
+        <PlatformFooter />
         <Button onClick={() => navigate("/home")}>Ke Home</Button>
       </div>
     );
@@ -305,6 +309,7 @@ export function Dashboard() {
     audit: "Audit history",
   }[view];
   const j = s?.journeys.find((j) => j.id === recordId);
+  const settingsDenied = parts[0] === "settings" && s?.user.role === "member";
   return (
     <div className="app-shell">
       <aside
@@ -347,59 +352,50 @@ export function Dashboard() {
                 <n.icon size={18} />
                 {n.label}
                 {n.id === "home" && (
-                  <span className="nav-count">
-                    {s?.tasks.filter((t) => t.status !== "Done").length || 0}
-                  </span>
+                  <span className="nav-count">{s?.homeTaskCount ?? 0}</span>
                 )}
               </button>
             ))}
         </nav>
-        {s &&
-          (s.user.role === "admin" ||
-            ["sales", "trips", "finance", "docs"].some((m) =>
-              can(s.user, m as Module),
-            )) && (
-            <>
-              <span className="nav-label">TEAM & SETTINGS</span>
-              <nav>
-                {s.user.role === "admin" && (
-                  <button
-                    className={view === "people" ? "active" : ""}
-                    onClick={() => navigate("/settings/people")}
-                  >
-                    <Users size={18} />
-                    People
-                  </button>
-                )}
-                {["sales", "trips", "finance", "docs"].some((m) =>
-                  can(s.user, m as Module, true),
-                ) && (
-                  <button
-                    className={view === "configuration" ? "active" : ""}
-                    onClick={() => navigate("/settings/configuration")}
-                  >
-                    <Settings size={18} />
-                    Configuration
-                  </button>
-                )}
-                {["sales", "trips", "finance", "docs"].some((m) =>
-                  can(s.user, m as Module),
-                ) && (
-                  <button
-                    className={view === "audit" ? "active" : ""}
-                    onClick={() => navigate("/settings/audit")}
-                  >
-                    <ShieldCheck size={18} />
-                    Audit history
-                  </button>
-                )}
-              </nav>
-            </>
-          )}
+        {s && s.user.role === "admin" && (
+          <>
+            <span className="nav-label">TEAM & SETTINGS</span>
+            <nav>
+              {s.user.role === "admin" && (
+                <button
+                  className={view === "people" ? "active" : ""}
+                  onClick={() => navigate("/settings/people")}
+                >
+                  <Users size={18} />
+                  People
+                </button>
+              )}
+              {["sales", "trips", "finance", "docs"].some((m) =>
+                can(s.user, m as Module, true),
+              ) && (
+                <button
+                  className={view === "configuration" ? "active" : ""}
+                  onClick={() => navigate("/settings/configuration")}
+                >
+                  <Settings size={18} />
+                  Configuration
+                </button>
+              )}
+              {["sales", "trips", "finance", "docs"].some((m) =>
+                can(s.user, m as Module),
+              ) && (
+                <button
+                  className={view === "audit" ? "active" : ""}
+                  onClick={() => navigate("/settings/audit")}
+                >
+                  <ShieldCheck size={18} />
+                  Audit history
+                </button>
+              )}
+            </nav>
+          </>
+        )}
         <div className="sidebar-bottom">
-          <div className="workspace-note">
-            <span className="status-dot tone-1" /> Egimu Travel · Internal
-          </div>
           <div className="sidebar-user">
             <span className="avatar">
               {initials(s?.user.name || "Travel OS")}
@@ -460,7 +456,8 @@ export function Dashboard() {
                   ...(s.user.role === "admin"
                     ? [{ label: "People", url: "/settings/people" }]
                     : []),
-                  ...((["sales", "trips", "finance", "docs"] as Module[]).some(
+                  ...(s.user.role === "admin" &&
+                  (["sales", "trips", "finance", "docs"] as Module[]).some(
                     (m) => can(s.user, m, true),
                   )
                     ? [
@@ -470,7 +467,8 @@ export function Dashboard() {
                         },
                       ]
                     : []),
-                  ...((["sales", "trips", "finance", "docs"] as Module[]).some(
+                  ...(s.user.role === "admin" &&
+                  (["sales", "trips", "finance", "docs"] as Module[]).some(
                     (m) => can(s.user, m),
                   )
                     ? [{ label: "Audit history", url: "/settings/audit" }]
@@ -519,6 +517,9 @@ export function Dashboard() {
           </div>
         </header>
         <main className="workspace-content">
+          {settingsDenied && (
+            <Empty text="Team & Settings hanya tersedia untuk admin." />
+          )}
           {loading && s && <Toast pending message="Memuat hasil terbaru..." />}
           {notice && !loading && (
             <Toast message={notice} onClose={() => setNotice("")} />
@@ -546,7 +547,8 @@ export function Dashboard() {
               <p>Menyiapkan ruang kerja…</p>
             </div>
           ) : (
-            s && (
+            s &&
+            !settingsDenied && (
               <>
                 {view === "docs" && recordId ? (
                   s.documents?.find((d) => d.id === recordId) ? (
@@ -703,28 +705,68 @@ export function Dashboard() {
                     </section>
                     {view === "docs" && (
                       <>
-                        <label className="search-box">
-                          <Search size={16} />
-                          <input
-                            aria-label="Cari dokumen"
-                            placeholder="Cari judul atau category…"
-                            value={filters.search || ""}
-                            onChange={(e) => filter("search", e.target.value)}
+                        <div
+                          className="detail-tabs"
+                          role="tablist"
+                          aria-label="Internal"
+                        >
+                          {["docs", "contacts"].map((tab) => (
+                            <button
+                              key={tab}
+                              role="tab"
+                              aria-selected={internalTab === tab}
+                              className={internalTab === tab ? "selected" : ""}
+                              onClick={() => {
+                                if (
+                                  dirty &&
+                                  !confirm("Buang perubahan belum disimpan?")
+                                )
+                                  return;
+                                setDirty(false);
+                                setInternalTab(tab);
+                              }}
+                            >
+                              {tab === "docs" ? "Docs" : "Contacts"}
+                            </button>
+                          ))}
+                        </div>
+                        {internalTab === "contacts" ? (
+                          <InternalContacts
+                            s={s}
+                            run={run}
+                            busy={busy}
+                            onDirty={setDirty}
                           />
-                        </label>
-                        <InternalDocs
-                          key="docs-list"
-                          s={s}
-                          run={run}
-                          busy={busy}
-                          navigate={navigate}
-                          onDirty={setDirty}
-                        />
-                        <Pagination
-                          count={s.count}
-                          page={Number(filters.page || 0)}
-                          onPage={(p) => filter("page", String(p))}
-                        />
+                        ) : (
+                          <>
+                            <div className="internal-docs-toolbar">
+                              <label className="search-box internal-docs-search">
+                                <Search size={16} />
+                                <input
+                                  aria-label="Cari dokumen"
+                                  placeholder="Cari judul atau category…"
+                                  value={filters.search || ""}
+                                  onChange={(e) =>
+                                    filter("search", e.target.value)
+                                  }
+                                />
+                              </label>
+                            </div>
+                            <InternalDocs
+                              key="docs-list"
+                              s={s}
+                              run={run}
+                              busy={busy}
+                              navigate={navigate}
+                              onDirty={setDirty}
+                            />
+                            <Pagination
+                              count={s.count}
+                              page={Number(filters.page || 0)}
+                              onPage={(p) => filter("page", String(p))}
+                            />
+                          </>
+                        )}
                       </>
                     )}
                     {view === "home" && (
@@ -1504,7 +1546,7 @@ export function Dashboard() {
           )}
         </main>
         <footer className="app-footer">
-          <span>travelOS · Egimu Travel</span>
+          <PlatformCredit />
           <span>
             Local timezone · {s?.timezone || "Local time"}{" "}
             <span className="status-dot tone-1" />

@@ -55,8 +55,83 @@ const { Board } = await import("../src/components/board");
 const { MoneyInput } = await import("../src/components/money-input");
 const { Ledger } = await import("../src/components/dashboard");
 const { InternalDocs } = await import("../src/components/internal-docs");
+const { Contacts } = await import("../src/components/detail");
+const { InternalContacts } =
+  await import("../src/components/internal-contacts");
+test("contacts return to a table after save and retain inputs after a failed save", async () => {
+  for (const saved of [false, true]) {
+    const ui = render(
+      <Contacts
+        j={journey}
+        edit
+        busy={false}
+        run={async () => saved}
+        dirty={() => {}}
+      />,
+    );
+    fireEvent.click(ui.getByRole("button", { name: "Edit contacts" }));
+    fireEvent.change(ui.getByRole("textbox", { name: "Nama contact" }), {
+      target: { value: "Updated contact" },
+    });
+    await act(async () =>
+      fireEvent.click(ui.getByRole("button", { name: "Simpan contacts" })),
+    );
+    assert.equal(
+      Boolean(ui.queryByRole("textbox", { name: "Nama contact" })),
+      !saved,
+    );
+    assert.ok(
+      ui.getByText(saved ? "Updated contact" : "Perubahan belum disimpan."),
+    );
+    cleanup();
+  }
+});
+test("Internal directory shows source column, compact saved contacts and search", () => {
+  const ui = render(
+    <InternalContacts
+      s={{
+        ...snapshot,
+        user: {
+          ...snapshot.user,
+          privileges: { ...snapshot.user.privileges, docs: "edit" },
+        },
+        contactDirectory: [
+          {
+            ...journey.contacts[0],
+            source: "CRM · School trip",
+            source_id: journey.id,
+            source_kind: "lead",
+          },
+        ],
+      }}
+      run={async () => true}
+      busy={false}
+      onDirty={() => {}}
+    />,
+  );
+  assert.ok(ui.getByRole("columnheader", { name: "Sumber" }));
+  assert.equal(ui.queryByRole("button", { name: /Share/ }), null);
+  assert.ok(ui.getByRole("link", { name: "CRM · School trip" }));
+  assert.equal(ui.queryByRole("textbox", { name: "Nama contact" }), null);
+  fireEvent.change(ui.getByRole("textbox", { name: "Cari contacts" }), {
+    target: { value: "no matching contact" },
+  });
+  assert.equal(ui.queryByText("Original contact"), null);
+  cleanup();
+});
 test("saved CRM contacts start as a compact table", () => {
-  const ui = render(<Detail journey={journey} snapshot={snapshot} busy={false} error="" onCommand={async () => true} onEdit={() => {}} onNavigate={() => {}} onDirty={() => {}} />);
+  const ui = render(
+    <Detail
+      journey={journey}
+      snapshot={snapshot}
+      busy={false}
+      error=""
+      onCommand={async () => true}
+      onEdit={() => {}}
+      onNavigate={() => {}}
+      onDirty={() => {}}
+    />,
+  );
   fireEvent.click(ui.getByRole("button", { name: "Contacts" }));
   assert.equal(ui.queryByRole("textbox", { name: "Nama contact" }), null);
   assert.ok(ui.getByRole("button", { name: "Edit contacts" }));

@@ -30,12 +30,18 @@ end$$;
 
 alter function private.command(jsonb) rename to command_before_contacts;
 create function private.command(c jsonb) returns uuid language plpgsql security definer set search_path='' as $$
-declare m public.memberships;before_data jsonb;v integer;begin
+declare m public.memberships;before_data jsonb;v integer;x jsonb;begin
  if c->>'action'<>'save_internal_contacts' then return private.command_before_contacts(c);end if;
  m:=private.me();if m.id is null or not private.allowed(m.workspace_id,'docs',true) then raise exception 'Akses Internal edit wajib' using errcode='42501';end if;
  perform 1 from public.workspaces where id=m.workspace_id for update;
  m:=private.me();if m.id is null or not private.allowed(m.workspace_id,'docs',true) then raise exception 'Akses ditolak' using errcode='42501';end if;
- perform private.validate_content(jsonb_build_object('contacts',c->'data'->'contacts'));
+ if c->'data'->'contacts' is null or jsonb_typeof(c->'data'->'contacts')<>'array' then raise exception 'Contacts tidak valid';end if;
+ if jsonb_array_length(c->'data'->'contacts')>100 then raise exception 'Maksimum 100 contacts internal';end if;
+ for x in select jsonb_array_elements(c->'data'->'contacts') loop
+  if x->>'id' is null then raise exception 'ID contact wajib';end if;
+  perform (x->>'id')::uuid;
+  if coalesce(length(trim(x->>'name')),0)=0 or length(x->>'name')>200 or length(x->>'phone')>80 or length(x->>'email')>320 or length(x->>'note')>5000 or length(x->>'role')>200 or length(x->>'organization')>200 then raise exception 'Contact tidak valid';end if;
+ end loop;
  insert into private.internal_contacts(workspace_id) values(m.workspace_id) on conflict do nothing;
  select contacts,version into before_data,v from private.internal_contacts where workspace_id=m.workspace_id for update;
  if (c->>'version')::integer is distinct from v then raise exception 'Contacts berubah; reload dulu' using errcode='40001';end if;

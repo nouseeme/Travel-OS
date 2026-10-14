@@ -10,6 +10,7 @@ import {
 import { Button } from "./ui/button";
 import { useRouter } from "next/navigation";
 import { ProductBrand, CompanyIdentity } from "./brand";
+import { PlatformFooter } from "./platform-credit";
 export function Auth({ passwordMode = false }: { passwordMode?: boolean }) {
   const router = useRouter();
   const [email, setEmail] = useState(""),
@@ -73,9 +74,6 @@ export function Auth({ passwordMode = false }: { passwordMode?: boolean }) {
         </a>
         <CompanyIdentity large />
         <div className="story-main">
-          <div className="eyebrow">
-            <span /> EGIMU TRAVEL · ONE WORKSPACE
-          </div>
           <h1>
             Perjalanan hebat <br />
             dimulai dari <br />
@@ -99,9 +97,6 @@ export function Auth({ passwordMode = false }: { passwordMode?: boolean }) {
       </section>
       <section className="auth-form">
         <div className="auth-form-inner">
-          <span className="pill">
-            <ShieldCheck size={14} /> Workspace internal
-          </span>
           <h2>
             {passwordMode
               ? "Buat password Anda"
@@ -205,6 +200,7 @@ export function Auth({ passwordMode = false }: { passwordMode?: boolean }) {
           )}
           <div className="auth-foot">
             Akses melalui invitation. Hubungi admin tim Anda untuk bergabung.
+            <PlatformFooter />
           </div>
         </div>
       </section>

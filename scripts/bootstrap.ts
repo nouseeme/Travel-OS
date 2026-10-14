@@ -37,7 +37,7 @@ const { error } = await admin.from("memberships").insert({
   email: values.email,
   role: "admin",
   status: "active",
-  privileges: { sales: "edit", trips: "edit", finance: "edit" },
+  privileges: { sales: "edit", trips: "edit", finance: "edit", docs: "edit" },
 });
 if (error) throw error;
 console.log("First admin activated. Sign in through /login.");

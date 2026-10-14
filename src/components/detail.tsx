@@ -1094,7 +1094,16 @@ function ItineraryRow({
     </div>
   );
 }
-export function Contacts({ j, edit: canEdit, busy, run, dirty, sources, onSave }: ContentProps & {
+export function Contacts({
+  j,
+  edit: canEdit,
+  busy,
+  run,
+  dirty,
+  sources,
+  onSave,
+}: Omit<ContentProps, "j"> & {
+  j: Pick<Journey, "id" | "version" | "contacts">;
   sources?: Record<string, { label: string; url?: string }>;
   onSave?: (contacts: Contact[]) => Promise<boolean>;
 }) {
@@ -1126,7 +1135,15 @@ export function Contacts({ j, edit: canEdit, busy, run, dirty, sources, onSave }
           </p>
         </div>
         <div className="row-actions">
-          {canEdit && !editing && <Button size="sm" variant="outline" onClick={() => setEditing(true)}>Edit contacts</Button>}
+          {canEdit && !editing && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setEditing(true)}
+            >
+              Edit contacts
+            </Button>
+          )}
           {edit && (
             <>
               <Button
@@ -1155,12 +1172,14 @@ export function Contacts({ j, edit: canEdit, busy, run, dirty, sources, onSave }
                 disabled={!changed || busy}
                 onClick={async () => {
                   if (
-                    await (onSave ? onSave(contacts) : run({
-                      action: "content",
-                      id: j.id,
-                      version: j.version,
-                      data: { contacts },
-                    }))
+                    await (onSave
+                      ? onSave(contacts)
+                      : run({
+                          action: "content",
+                          id: j.id,
+                          version: j.version,
+                          data: { contacts },
+                        }))
                   ) {
                     setChanged(false);
                     setEditing(false);
@@ -1172,10 +1191,20 @@ export function Contacts({ j, edit: canEdit, busy, run, dirty, sources, onSave }
                 Simpan contacts
               </Button>
               {changed && <CopyChanges value={contacts} />}
-              <Button size="sm" variant="ghost" disabled={busy} onClick={() => {
-                if (changed && !confirm("Buang perubahan contacts?")) return;
-                setContacts(structuredClone(j.contacts)); setChanged(false); setEditing(false); dirty(false);
-              }}>Batal</Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={busy}
+                onClick={() => {
+                  if (changed && !confirm("Buang perubahan contacts?")) return;
+                  setContacts(structuredClone(j.contacts));
+                  setChanged(false);
+                  setEditing(false);
+                  dirty(false);
+                }}
+              >
+                Batal
+              </Button>
             </>
           )}
         </div>
@@ -1255,7 +1284,17 @@ export function Contacts({ j, edit: canEdit, busy, run, dirty, sources, onSave }
                       <PlainNote body={c.note} />
                     )}
                   </td>
-                  {sources && <td>{sources[c.id]?.url ? <a className="table-link" href={sources[c.id].url}>{sources[c.id].label}</a> : sources[c.id]?.label || "Internal"}</td>}
+                  {sources && (
+                    <td>
+                      {sources[c.id]?.url ? (
+                        <a className="table-link" href={sources[c.id].url}>
+                          {sources[c.id].label}
+                        </a>
+                      ) : (
+                        sources[c.id]?.label || "Internal"
+                      )}
+                    </td>
+                  )}
                   {edit && (
                     <td>
                       <button

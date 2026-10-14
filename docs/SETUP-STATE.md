@@ -1,5 +1,11 @@
 # Current setup state
 
+## Latest state — demo reset, 14 October 2026
+
+The owner-requested reset supersedes the earlier account/data statements below. Previous Auth users and sessions, business records, invitations and share links were removed from Travel OS only. The hosted project now contains fictional demo history: 44 leads, 23 Trips, 301 tasks, 183 transactions, 161 budgets, 32 documents and 921 marked fixture audit events. Seven passwordless, banned fictional staff rows support assignments and history; **no active admin exists**. Create a confirmed real Auth user and run `supabase/bootstrap-first-admin.sql` after replacing `YOUR_EMAIL`. See [Demo data](DEMO-DATA.md) for the coverage matrix, local share URLs and validation. Schema, RLS, deployed functions, workspace settings and disabled legacy snapshot gate were preserved. Code changes remain local and uncommitted.
+
+## Earlier setup history
+
 Travel OS (giomytbyuosmdljzslmk) is ACTIVE_HEALTHY in nouseeme's Org, Singapore. Existing unrelated projects were not modified.
 
 Core, P1 configuration/analytics, share-snapshot, hosted-hardening and manual-invitation migrations are applied. Workspace/categories are seeded without synthetic business records. The ignored .env.local uses the project's publishable key; no server secret is stored locally. The invitation Edge Function is deployed with explicit caller verification and active-admin authorization. The first manually created, confirmed Auth user is activated as Noufal Rizka's administrator membership.

@@ -1353,17 +1353,7 @@ await test("P2 Finance projections and pipeline writes obey module privileges", 
   const tripsState = await snapshot("trips");
   assert.ok(tripsState.tripStages.length);
   assert.equal(tripsState.budgets, undefined);
-  assert.ok(
-    !(await snapshot("audit")).audit.some((e: any) =>
-      [
-        "save_budget",
-        "save_category",
-        "create_transaction",
-        "edit_transaction",
-        "void_transaction",
-      ].includes(e.action),
-    ),
-  );
+  await assert.rejects(snapshot("audit"));
   assert.equal(
     (await db.query("select * from public.trip_budgets")).rows.length,
     0,
@@ -1378,11 +1368,7 @@ await test("P2 Finance projections and pipeline writes obey module privileges", 
       semantic: "open",
     }),
   );
-  assert.ok(
-    (await snapshot("audit")).audit.every(
-      (e: any) => !e.action.includes("transaction"),
-    ),
-  );
+  await assert.rejects(snapshot("configuration"));
   await asUser(financeOnly);
   const financeState = await snapshot("finance");
   assert.equal(financeState.tripStages, undefined);
@@ -2026,6 +2012,167 @@ await test("live permissions downgrade, revoke and expired links immediately den
   );
   await anonymous();
   await assert.rejects(liveRead(secondToken));
+});
+await test("Home badge counts only the current user's open tasks across every module and page", async () => {
+  await db.exec("reset role");
+  await db.query(
+    "update public.memberships set privileges=$1::jsonb,status='active' where id=$2",
+    [
+      JSON.stringify({
+        sales: "edit",
+        trips: "edit",
+        finance: "edit",
+        docs: "edit",
+      }),
+      admin,
+    ],
+  );
+  await asUser(admin);
+  for (let index = 0; index < 55; index++)
+    await cmd("create_task", {
+      title: `Badge task ${index}`,
+      context: "internal",
+      assignee: admin,
+      due: "",
+    });
+  const expected = (
+    await db.query<{ n: number }>(
+      "select count(*)::integer n from public.tasks where workspace_id=$1 and assignee=$2 and data->>'status'<>'Done' and data->>'cancelled_at' is null",
+      [w, admin],
+    )
+  ).rows[0].n;
+  assert.ok(expected >= 55);
+  for (const view of [
+    "home",
+    "sales",
+    "trips",
+    "finance",
+    "docs",
+    "people",
+    "configuration",
+    "audit",
+  ])
+    assert.equal(
+      (await snapshot(view, { search: "nonmatching", page: "2" }))
+        .homeTaskCount,
+      expected,
+      view,
+    );
+});
+await test("Internal contacts retain archived sources, optimistic saves and read-only share revocation", async () => {
+  await asUser(admin);
+  const source = await cmd("create_journey", {
+    ...leadData,
+    pic: admin,
+    people: [admin],
+    name: "Directory source",
+  });
+  const sourceContact = {
+    id: randomUUID(),
+    name: "Source contact",
+    role: "",
+    organization: "",
+    phone: "123",
+    email: "",
+    note: "Source note",
+  };
+  await cmd("content", { contacts: [sourceContact] }, source, 1);
+  await cmd("archive", { reason: "Directory archive test" }, source, 2);
+  const internal = {
+    ...sourceContact,
+    id: randomUUID(),
+    name: "Internal contact",
+  };
+  await cmd("save_internal_contacts", { contacts: [internal] }, undefined, 1);
+  await assert.rejects(
+    cmd("save_internal_contacts", { contacts: [] }, undefined, 1),
+  );
+  const s = await snapshot("docs", { search: "nonmatching", page: "99" });
+  assert.ok(
+    s.contactDirectory.some(
+      (c: any) => c.source_id === source && c.name === sourceContact.name,
+    ),
+  );
+  assert.ok(
+    s.contactDirectory.some(
+      (c: any) => c.source_kind === "internal" && c.name === internal.name,
+    ),
+  );
+  assert.equal(s.internalContacts.version, 2);
+  const token = "c".repeat(64);
+  const manage = async (action: string, id: string | null = null) =>
+    (
+      await db.query<{ s: any }>(
+        "select public.app_contacts_share_manage($1,$2,$3,7) s",
+        [action, id, action === "create" ? token : null],
+      )
+    ).rows[0].s;
+  const link = await manage("create");
+  await anonymous();
+  const shared = (
+    await db.query<{ s: any }>("select public.app_share_read($1) s", [token])
+  ).rows[0].s;
+  assert.equal(shared.kind, "internal_contacts");
+  assert.ok(shared.contacts.some((c: any) => c.name === internal.name));
+  await assert.rejects(manage("list"));
+  await asUser(admin);
+  await manage("revoke", link.id);
+  await anonymous();
+  assert.equal(
+    (await db.query<{ s: any }>("select public.app_share_read($1) s", [token]))
+      .rows[0].s,
+    null,
+  );
+});
+await test("non-admin module editors cannot access Team & Settings or configuration writes", async () => {
+  await db.exec("reset role");
+  const member = randomUUID();
+  await db.query("insert into auth.users(id,email) values($1,$2)", [
+    member,
+    member + "@example.test",
+  ]);
+  await db.query(
+    "insert into public.memberships(id,workspace_id,name,email,role,status,privileges) values($1,$2,'Module editor',$3,'member','active',$4::jsonb)",
+    [
+      member,
+      w,
+      member + "@example.test",
+      JSON.stringify({
+        sales: "edit",
+        trips: "edit",
+        finance: "edit",
+        docs: "edit",
+      }),
+    ],
+  );
+  await asUser(member);
+  for (const view of ["people", "configuration", "audit"])
+    await assert.rejects(snapshot(view));
+  for (const action of [
+    "save_stage",
+    "retire_stage",
+    "save_trip_stage",
+    "retire_trip_stage",
+    "save_category",
+  ])
+    await assert.rejects(
+      cmd(action, {
+        label: "Denied",
+        kind: "internal_doc",
+        name: "Denied",
+        content: "Denied",
+      }),
+    );
+  assert.ok((await snapshot("docs")).internalContacts);
+  await cmd("save_template", {
+    name: "Editor module template",
+    kind: "internal_doc",
+    content: "Module workflow",
+  });
+  await cmd("trip_view", { view: "calendar" });
+  await asUser(admin);
+  assert.ok((await snapshot("configuration")).user);
+  assert.ok((await snapshot("audit")).user);
 });
 console.log(
   `Database regression: ${passed} scenarios passed (embedded PostgreSQL; hosted Auth/email/concurrency remain separate gates).`,

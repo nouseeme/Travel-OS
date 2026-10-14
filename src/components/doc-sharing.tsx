@@ -1,11 +1,20 @@
 "use client";
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import type { InternalDoc } from "@/lib/model";
 import { Button } from "./ui/button";
 import { Markdown } from "./markdown";
 import { localTimestamp } from "@/lib/time";
 type Link = { id: string; expires_at: string; revoked_at: string | null };
-export function DocSharing({ doc }: { doc: InternalDoc }) {
+export function DocSharing({
+  doc,
+  directory = false,
+  previewContent,
+}: {
+  doc: InternalDoc;
+  directory?: boolean;
+  previewContent?: ReactNode;
+}) {
   const [links, setLinks] = useState<Link[]>([]),
     [url, setUrl] = useState(""),
     [error, setError] = useState(""),
@@ -21,7 +30,7 @@ export function DocSharing({ doc }: { doc: InternalDoc }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action,
-          doc: doc.id,
+          ...(directory ? { directory: true } : { doc: doc.id }),
           link,
           version: doc.version,
           days,
@@ -47,11 +56,12 @@ export function DocSharing({ doc }: { doc: InternalDoc }) {
   return (
     <section className="p1-panel doc-share">
       <header className="doc-share-heading">
-        <h2>Share document</h2>
+        <h2>{directory ? "Share contacts" : "Share document"}</h2>
         <span className="tag neutral">View only</span>
       </header>
       <p className="doc-share-description">
-        Siapa pun dengan link dapat membaca dokumen yang dipublish.
+        Siapa pun dengan link dapat membaca{" "}
+        {directory ? "contacts yang dipublish" : "dokumen yang dipublish"}.
       </p>
       <small className="doc-share-hint">
         Edit terbaru dibagikan melalui Publish update.
@@ -81,7 +91,9 @@ export function DocSharing({ doc }: { doc: InternalDoc }) {
           onClick={() => {
             if (
               confirm(
-                "Bagikan seluruh isi dokumen ini melalui link hanya-baca?",
+                directory
+                  ? "Bagikan daftar contacts beserta sumbernya melalui link hanya-baca?"
+                  : "Bagikan seluruh isi dokumen ini melalui link hanya-baca?",
               )
             )
               void call("create");
@@ -93,7 +105,7 @@ export function DocSharing({ doc }: { doc: InternalDoc }) {
       {preview && (
         <article className="share-preview">
           <h3>{doc.title}</h3>
-          <Markdown body={doc.body} />
+          {previewContent || <Markdown body={doc.body} />}
         </article>
       )}
       {url && (

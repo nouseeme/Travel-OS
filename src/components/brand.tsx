@@ -11,7 +11,13 @@ export function ProductBrand() {
     </>
   );
 }
-export function CompanyIdentity({ large = false }: { large?: boolean }) {
+export function CompanyIdentity({
+  large = false,
+  logoOnly = false,
+}: {
+  large?: boolean;
+  logoOnly?: boolean;
+}) {
   return (
     <div className={"company-identity" + (large ? " large" : "")}>
       <img
@@ -20,12 +26,14 @@ export function CompanyIdentity({ large = false }: { large?: boolean }) {
         width={large ? 108 : 56}
         height={large ? 108 : 56}
       />
-      <div>
-        <b>Egimu Travel</b>
-        <small>
-          {large ? "Ruang kerja operasional perjalanan" : "Ruang kerja tim"}
-        </small>
-      </div>
+      {!logoOnly && (
+        <div>
+          <b>Egimu Travel</b>
+          <small>
+            {large ? "Ruang kerja operasional perjalanan" : "Ruang kerja tim"}
+          </small>
+        </div>
+      )}
     </div>
   );
 }

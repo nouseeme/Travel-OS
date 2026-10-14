@@ -1,5 +1,7 @@
 # travelOS · Egimu Travel
 
+The hosted database was reset and populated with a fictional six-month demo history on 14 October 2026. Previous real Auth accounts were removed; no active admin exists until owner bootstrap. See [demo coverage and first-admin instructions](docs/DEMO-DATA.md). Ordinary `supabase/seed.sql` remains minimal; demo resets are prepared separately and never run automatically.
+
 Internal, invite-only travel operations application built from [the PRD](Travel-OS-MVP-PRD.md). The app uses real Supabase Auth and PostgreSQL. There is no demo login, local-storage database, public signup, or anonymous access to workspace records.
 
 The latest [workspace refinements](docs/WORKSPACE-REFINEMENTS.md) are implemented in the local preview, and their approved Supabase migration is applied. Code remains local and uncommitted; no application deployment was made.
