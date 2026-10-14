@@ -1069,6 +1069,99 @@ await test("P1 Home date filters run before card limits and Calendar includes fi
     ).totals,
   );
 });
+await test("local timezone snapshot, instant range and future-date validation agree", async () => {
+  await asUser(admin);
+  for (const timezone of [
+    "America/Adak",
+    "Pacific/Kiritimati",
+    "Europe/Istanbul",
+    "UTC",
+  ]) {
+    const state = await snapshot("home", { timezone });
+    const expected = await db.query<{ date_text: string }>(
+      "select (now() at time zone $1)::date::text as date_text",
+      [timezone],
+    );
+    assert.equal(state.today, expected.rows[0].date_text);
+    assert.equal(state.timezone, timezone);
+  }
+  await assert.rejects(snapshot("home", { timezone: "Invalid/Timezone" }));
+  const dates = await db.query<{ early: string; late: string }>(
+    "select (now() at time zone 'Etc/GMT+12')::date::text early,(now() at time zone 'Pacific/Kiritimati')::date::text late",
+  );
+  const { early, late } = dates.rows[0];
+  assert.ok(late > early);
+  const data = {
+    idempotency_key: randomUUID(),
+    date: late,
+    direction: "in",
+    amount: "1",
+    category: "other_in",
+    description: "Timezone boundary test",
+    trip: "",
+  };
+  // Use an existing seeded category; the example key is not a generated ID.
+  data.category = (await snapshot("finance")).categories.find(
+    (c: any) => c.direction === "in",
+  ).id;
+  await assert.rejects(
+    db.query("select public.app_command($1::jsonb)", [
+      JSON.stringify({
+        action: "create_transaction",
+        timezone: "Etc/GMT+12",
+        data,
+      }),
+    ]), /Future transaction date/,
+  );
+  const result = await db.query<{ id: string }>(
+    "select public.app_command($1::jsonb) id",
+    [
+      JSON.stringify({
+        action: "create_transaction",
+        timezone: "Pacific/Kiritimati",
+        data,
+      }),
+    ],
+  );
+  const saved = (
+    await snapshot("finance", {
+      from: late,
+      to: late,
+      timezone: "Pacific/Kiritimati",
+    })
+  ).transactions.find((t: any) => t.id === result.rows[0].id);
+  assert.equal(saved.date, late);
+  assert.match(saved.created_at, /(Z|\+00:00)$/);
+  const id = await cmd("create_journey", {...leadData,pic:admin,people:[admin]});
+  await db.exec("reset role");
+  await db.query(
+    "update public.journeys set created_at='2026-10-14T00:30:00Z' where id=$1",
+    [id],
+  );
+  await asUser(admin);
+  const query = async (timezone: string, day: string) =>
+    (
+      await db.query<{ r: any }>(
+        "select public.app_insights('sales',$1::jsonb) r",
+        [JSON.stringify({ timezone, from: day, to: day })],
+      )
+    ).rows[0].r.rows;
+  assert.ok(
+    (await query("America/Los_Angeles", "2026-10-13")).some(
+      (j: any) => j.id === id,
+    ),
+  );
+  assert.ok(
+    !(await query("America/Los_Angeles", "2026-10-14")).some(
+      (j: any) => j.id === id,
+    ),
+  );
+  assert.ok(
+    (await query("Europe/Istanbul", "2026-10-14")).some(
+      (j: any) => j.id === id,
+    ),
+  );
+});
 console.log(
   `Database regression: ${passed} scenarios passed (embedded PostgreSQL; hosted Auth/email/concurrency remain separate gates).`,
 );

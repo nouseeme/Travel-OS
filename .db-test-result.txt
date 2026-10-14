@@ -1,0 +1,25 @@
+
+> travel-os@0.1.0 db:test
+> tsx scripts/test-database.ts
+
+PASS create lead and integrated task
+PASS direct anonymous and member Finance denial
+PASS conversion rollback on ineligible assignee
+PASS atomic conversion preserves task ID and idempotent source
+PASS optimistic conflict and constrained task status
+PASS view-only Trips excludes Finance response and denies write
+PASS exact PRD cash example and idempotency
+PASS reject fractional, locale, future, direction mismatch and foreign context
+PASS void is final and audit atomic
+PASS export is admin-only and cannot spoof actor
+PASS invitation beyond three users succeeds; last admin remains protected
+PASS revocation effective on existing session
+PASS Trips-only response never carries Finance or related aggregates
+PASS Finance-only projection supplies minimal Trip reference
+PASS audit failure rolls back new cash entry
+PASS cross-workspace and forged context denied
+PASS reserve invitation slot and persist provider failure
+PASS revoked/superseded invitation cannot activate through an old Auth session
+PASS valid invitation activates exactly once; provider metadata cannot grant admin
+PASS expired invitation denied before password activation
+PASS conversion copies real draft documents without cash entries

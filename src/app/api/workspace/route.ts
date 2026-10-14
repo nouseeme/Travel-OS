@@ -8,7 +8,18 @@ import { parseFilters } from "@/lib/filters";
 import { validTimezone } from "@/lib/time";
 export const dynamic = "force-dynamic";
 const commandSchema = z.object({
-  timezone: z.string().max(100).transform(validTimezone).default("UTC"),
+  timezone: z
+    .string()
+    .max(100)
+    .refine((value) => {
+      try {
+        validTimezone(value);
+        return true;
+      } catch {
+        return false;
+      }
+    }, "Timezone tidak valid.")
+    .default("UTC"),
   action: z.enum([
     "create_journey",
     "update_journey",

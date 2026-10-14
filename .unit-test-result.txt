@@ -1,0 +1,55 @@
+
+> travel-os@0.1.0 test
+> tsx --test tests/*.test.ts tests/*.test.tsx
+
+✔ Markdown survives WYSIWYG round trips for requested formatting and existing tables/checklists (214.6498ms)
+✔ editor links accept explicit safe schemes and reject executable URLs (1.6456ms)
+✔ unsupported existing Markdown stays protected instead of being discarded (56.2893ms)
+✔ local calendar date handles midnight and daylight-saving changes (87.5543ms)
+✔ whole-rupiah input preserves precision and rejects ambiguous values (5.3329ms)
+✔ cash arithmetic is exact beyond JavaScript safe integers (5.0927ms)
+✔ dates do not normalize invalid calendar dates (7.4743ms)
+✔ deadline warnings use workspace business date and exclude Done (127.712ms)
+✔ CSV protects formula cells and quotes Unicode, commas, and newlines (1.6121ms)
+✔ public Markdown removes raw HTML, executable URLs and remote image embeds (49.5435ms)
+✔ comparison percent handles zero baseline, negative change and exact large amounts (0.9492ms)
+✔ mutations require the configured same origin (14.9207ms)
+✔ request bodies are capped even without Content-Length (17.8914ms)
+✔ filters reject invalid dates, inverted periods and unbounded pages (16.5965ms)
+✔ saving contacts preserves unsaved notes in the same atomic command (866.4235ms)
+✔ Trips user without Finance sees no Finance tab or cash data controls (91.6778ms)
+✔ cash filter responses cannot overwrite a newer period (192.325ms)
+✔ protected Markdown rendering blocks script markup and executable links (83.1681ms)
+✖ WYSIWYG replaces external template content without dirty events and disables editing during save (71.8475ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 18
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 917159.2903
+
+✖ failing tests:
+
+test at tests\ui.test.tsx:1:5972
+✖ WYSIWYG replaces external template content without dirty events and disables editing during save (71.8475ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'Initial\\n\\nBold'
+  - 'Initial'
+            ^
+  
+      at TestContext.<anonymous> (C:\Users\NoufalRizka\Documents\01 DevProjects\Travel OS\tests\ui.test.tsx:289:12)
+      at runNextTicks (node:internal/process/task_queues:65:5)
+      at process.processTimers (node:internal/timers:538:9)
+      at async Test.run (node:internal/test_runner/test:1208:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:831:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Initial\\n\\nBold',
+    expected: 'Initial',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

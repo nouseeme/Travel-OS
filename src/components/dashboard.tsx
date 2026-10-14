@@ -131,7 +131,7 @@ export function Dashboard() {
         }
         throw Error(d.error);
       }
-      setS({...d, today: dateInZone(), timezone: localTimezone()});
+      setS({ ...d, today: dateInZone(), timezone: localTimezone() });
       if (view === "trips") setJourneyTab(d.tripView || "board");
       setAppliedFilters(filters);
       setError("");
@@ -150,6 +150,14 @@ export function Dashboard() {
       requestSequence.current++;
     };
   }, [fetchState]);
+  useEffect(() => {
+    const refreshLocalDay = () => {
+      if (s && (s.today !== dateInZone() || s.timezone !== localTimezone())) void fetchState();
+    };
+    const timer = window.setInterval(refreshLocalDay, 60000);
+    window.addEventListener("focus", refreshLocalDay);
+    return () => {window.clearInterval(timer);window.removeEventListener("focus",refreshLocalDay);};
+  }, [s?.today, s?.timezone, fetchState]);
   useEffect(() => {
     if (!dirty) return;
     const fn = (e: BeforeUnloadEvent) => {
@@ -174,7 +182,7 @@ export function Dashboard() {
       const r = await fetch("/api/workspace", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({...c, timezone: localTimezone()}),
+        body: JSON.stringify({ ...c, timezone: localTimezone() }),
       });
       const d = await r.json();
       if (!r.ok) {
@@ -227,7 +235,7 @@ export function Dashboard() {
       const r = await fetch("/api/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({...effective, timezone: localTimezone()}),
+        body: JSON.stringify({ ...effective, timezone: localTimezone() }),
       });
       if (!r.ok) throw Error((await r.json()).error);
       const blob = await r.blob();
@@ -399,7 +407,7 @@ export function Dashboard() {
           <div>
             <span className="top-date">
               <CalendarDays size={14} />
-              {s ? shortDate(s.today) : localTimezone()}
+              {s ? shortDate(s.today) : "Local time"}
             </span>
             <button
               className="round-button"
@@ -1296,7 +1304,7 @@ export function Dashboard() {
         <footer className="app-footer">
           <span>travelOS · Egimu Travel</span>
           <span>
-            Local timezone · {s?.timezone || localTimezone()}{" "}
+            Local timezone · {s?.timezone || "Local time"}{" "}
             <span className="status-dot tone-1" />
           </span>
         </footer>

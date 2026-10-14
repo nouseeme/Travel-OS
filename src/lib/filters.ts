@@ -2,7 +2,18 @@ import { z } from "zod";
 import { date, AppError } from "./domain";
 import { validTimezone } from "./time";
 export const filterSchema = z.object({
-  timezone: z.string().max(100).transform(validTimezone).default("UTC"),
+  timezone: z
+    .string()
+    .max(100)
+    .refine((value) => {
+      try {
+        validTimezone(value);
+        return true;
+      } catch {
+        return false;
+      }
+    }, "Timezone tidak valid.")
+    .default("UTC"),
   from: z.string().optional(),
   to: z.string().optional(),
   direction: z.enum(["", "in", "out"]).optional(),

@@ -29,9 +29,14 @@ Object.defineProperty(globalThis, "HTMLElement", {
   configurable: true,
   value: dom.window.HTMLElement,
 });
+Object.defineProperty(globalThis, "getComputedStyle", {
+  configurable: true,
+  value: dom.window.getComputedStyle.bind(dom.window),
+});
 const { render, fireEvent, cleanup, waitFor, act } =
   await import("@testing-library/react");
 const { Detail } = await import("../src/components/detail");
+const {default: RichEditorClient} = await import("../src/components/rich-editor-client");
 const user: Person = {
   id: randomUUID(),
   version: 1,
@@ -115,9 +120,16 @@ test("saving contacts preserves unsaved notes in the same atomic command", async
     />,
   );
   try {
-    fireEvent.change(ui.getByLabelText("Markdown note"), {
-      target: { value: "Unsaved new note" },
+    const noteEditor = await ui.findByRole(
+      "textbox",
+      { name: "Markdown note" },
+      { timeout: 10000 },
+    );
+    await act(async () => {
+      noteEditor.innerHTML = "<p>Unsaved new note</p>";
+      fireEvent.input(noteEditor);
     });
+    await waitFor(() => assert.equal(isDirty, true));
     fireEvent.change(ui.getByLabelText("Nama *", { exact: true }), {
       target: { value: "Unsaved new contact" },
     });
@@ -133,7 +145,7 @@ test("saving contacts preserves unsaved notes in the same atomic command", async
       "Unsaved new contact",
     );
     assert.equal(
-      (ui.getByLabelText("Markdown note") as HTMLTextAreaElement).value,
+      ui.getByRole("textbox", { name: "Markdown note" }).textContent,
       "Unsaved new note",
     );
     assert.equal(isDirty, true);
@@ -233,7 +245,7 @@ test("cash filter responses cannot overwrite a newer period", async () => {
     globalThis.fetch = original;
   }
 });
-test("Markdown preview blocks script markup and executable links", () => {
+test("protected Markdown rendering blocks script markup and executable links", () => {
   const dangerous: Journey = {
     ...journey,
     notes: [
@@ -257,7 +269,7 @@ test("Markdown preview blocks script markup and executable links", () => {
     />,
   );
   try {
-    fireEvent.click(ui.getByRole("button", { name: "Preview" }));
+    assert.ok(ui.getByRole("alert"));
     assert.equal(ui.container.querySelector("script"), null);
     assert.equal(ui.container.querySelector('a[href^="javascript:"]'), null);
     assert.equal(
@@ -267,4 +279,21 @@ test("Markdown preview blocks script markup and executable links", () => {
   } finally {
     cleanup();
   }
+});
+test("WYSIWYG replaces external template content without dirty events and disables editing during save", async () => {
+  let changes = 0;
+  const onChange = () => changes++;
+  const ui = render(<RichEditorClient value={"## Initial\n\n**Bold**"} label="Template test" onChange={onChange}/>);
+  try {
+    const field = await ui.findByRole("textbox",{name:"Template test"});
+    assert.equal(field.querySelector("h2")?.textContent,"Initial");
+    assert.equal(field.querySelector("strong")?.textContent,"Bold");
+    assert.equal(ui.queryByRole("button",{name:"Preview"}),null);
+    ui.rerender(<RichEditorClient value={"### Replaced\n\n- New item"} label="Template test" onChange={onChange} disabled/>);
+    await waitFor(()=>assert.equal(field.querySelector("h3")?.textContent,"Replaced"));
+    assert.equal(field.querySelector("li")?.textContent,"New item");
+    assert.equal(field.getAttribute("contenteditable"),"false");
+    assert.equal((ui.getByRole("button",{name:"Bold"}) as HTMLButtonElement).disabled,true);
+    assert.equal(changes,0);
+  } finally {cleanup();}
 });

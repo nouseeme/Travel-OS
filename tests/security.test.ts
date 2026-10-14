@@ -55,6 +55,6 @@ test("filters reject invalid dates, inverted periods and unbounded pages", () =>
   assert.throws(() => parseFilters({ status: "draft" }));
   assert.deepEqual(
     parseFilters({ status: "posted", unexpected: "drop table" }),
-    { status: "posted" },
+    { status: "posted", timezone: "UTC" },
   );
 });

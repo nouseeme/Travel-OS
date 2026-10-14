@@ -33,7 +33,7 @@ export function requireAccess(user: Person, module?: Module, edit = false) {
       403,
     );
 }
-export function todayIn(timezone = "Asia/Jakarta", now = new Date()) {
+export function todayIn(timezone = "UTC", now = new Date()) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: timezone,
     year: "numeric",

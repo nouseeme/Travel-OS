@@ -660,9 +660,7 @@ function Notes({ j, edit, busy, run, dirty }: ContentProps) {
                   value={note.body}
                   onChange={(body) =>
                     update(
-                      notes.map((n) =>
-                        n.id === note.id ? { ...n, body } : n,
-                      ),
+                      notes.map((n) => (n.id === note.id ? { ...n, body } : n)),
                     )
                   }
                 />

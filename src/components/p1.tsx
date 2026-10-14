@@ -399,9 +399,7 @@ export function AuditViewer({ s }: { s: Snapshot }) {
         <tbody>
           {s.audit?.map((a) => (
             <tr key={a.id}>
-              <td>
-                {localTimestamp(a.at)}
-              </td>
+              <td>{localTimestamp(a.at)}</td>
               <td>{s.people.find((p) => p.id === a.actor)?.name || a.actor}</td>
               <td>{a.action}</td>
               <td>{a.entity}</td>
@@ -795,19 +793,17 @@ export function Configuration({
                           )
                         }
                       />
-                      <input
-                        aria-label="Deskripsi aktivitas"
+                      <RichEditor
+                        label="Deskripsi aktivitas"
                         value={item.description}
-                        onChange={(e) =>
+                        onChange={(description) =>
                           setDays(
                             days.map((x, n) =>
                               n === i
                                 ? {
                                     ...x,
                                     items: x.items.map((y, o) =>
-                                      o === k
-                                        ? { ...y, description: e.target.value }
-                                        : y,
+                                      o === k ? { ...y, description } : y,
                                     ),
                                   }
                                 : x,
