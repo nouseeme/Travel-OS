@@ -431,10 +431,6 @@ export function Dashboard() {
           </>
         )}
         <div className="sidebar-bottom">
-          <a className="help-nav-link" href="/help">
-            <CircleHelp size={18} />
-            Bantuan penggunaan
-          </a>
           <div className="sidebar-user">
             <span className="avatar">
               {initials(s?.user.name || "Travel OS")}
@@ -1353,73 +1349,6 @@ export function Dashboard() {
                           </div>
                         </div>
                         <div className="people-grid">
-                          <div className="bulk-toolbar">
-                            <label>
-                              <input
-                                type="checkbox"
-                                aria-label="Pilih semua anggota"
-                                checked={
-                                  s.people.filter(
-                                    (p) =>
-                                      p.status === "active" &&
-                                      p.id !== s.user.id,
-                                  ).length > 0 &&
-                                  s.people
-                                    .filter(
-                                      (p) =>
-                                        p.status === "active" &&
-                                        p.id !== s.user.id,
-                                    )
-                                    .every((p) => selectedPeople.includes(p.id))
-                                }
-                                onChange={(e) =>
-                                  setSelectedPeople(
-                                    e.target.checked
-                                      ? s.people
-                                          .filter(
-                                            (p) =>
-                                              p.status === "active" &&
-                                              p.id !== s.user.id,
-                                          )
-                                          .map((p) => p.id)
-                                      : [],
-                                  )
-                                }
-                              />{" "}
-                              Pilih semua anggota
-                            </label>
-                            <Button
-                              size="sm"
-                              disabled={!selectedPeople.length || busy}
-                              onClick={async () => {
-                                if (
-                                  !confirm(
-                                    `Deactivate ${selectedPeople.length} anggota?`,
-                                  )
-                                )
-                                  return;
-                                if (
-                                  await run({
-                                    action: "bulk_action",
-                                    data: {
-                                      commands: s.people
-                                        .filter((p) =>
-                                          selectedPeople.includes(p.id),
-                                        )
-                                        .map((p) => ({
-                                          action: "deactivate",
-                                          id: p.id,
-                                          version: p.version,
-                                        })),
-                                    },
-                                  })
-                                )
-                                  setSelectedPeople([]);
-                              }}
-                            >
-                              Deactivate terpilih
-                            </Button>
-                          </div>
                           {s.people.map((p) => (
                             <article className="person-card" key={p.id}>
                               <div className="person-card-head">
@@ -1650,6 +1579,10 @@ export function Dashboard() {
         </main>
         <footer className="app-footer">
           <PlatformCredit />
+          <a href="/help" style={{display: "flex", alignItems: "center", gap: "4px"}}>
+            <CircleHelp size={12} />
+            Bantuan penggunaan
+          </a>
           <span>
             Local timezone · {s?.timezone || "Local time"}{" "}
             <span className="status-dot tone-1" />
