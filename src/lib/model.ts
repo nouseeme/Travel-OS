@@ -19,6 +19,7 @@ export interface Note {
 }
 export interface Contact {
   id: string;
+  version?: number;
   name: string;
   role: string;
   organization: string;

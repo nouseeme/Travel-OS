@@ -1257,8 +1257,9 @@ export function Contacts({
         <div>
           <h2>Contacts</h2>
           <p>
-            Kontak operasional dan klien · tidak menyimpan data
-            paspor/pembayaran
+            {directory
+              ? "Kontak bersama: perubahan berlaku di semua CRM/Trip yang terhubung. Menghapus baris di sini hanya melepas tautan."
+              : "Kontak operasional dan klien · tidak menyimpan data paspor/pembayaran"}
           </p>
         </div>
         <div className="row-actions">
@@ -1274,31 +1275,48 @@ export function Contacts({
           {edit && (
             <>
               {!single && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    const id = crypto.randomUUID();
-                    setNewIds((prev) => [...prev, id]);
-                    setContacts([
-                      ...contacts,
-                      {
-                        id,
-                        name: "",
-                        role: "",
-                        organization: "",
-                        phone: "",
-                        email: "",
-                        note: "",
-                      },
-                    ]);
-                    setChanged(true);
-                    dirty(true);
-                  }}
-                >
-                  <Plus size={15} />
-                  Contact
-                </Button>
+                <>
+                  {directory && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => {
+                        const id = crypto.randomUUID();
+                        setLookupId(id);
+                        setLookup("");
+                        setChoosing(true);
+                      }}
+                    >
+                      Add from database
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const id = crypto.randomUUID();
+                      setNewIds((prev) => [...prev, id]);
+                      setContacts([
+                        ...contacts,
+                        {
+                          id,
+                          name: "",
+                          role: "",
+                          organization: "",
+                          phone: "",
+                          email: "",
+                          note: "",
+                        },
+                      ]);
+                      setChanged(true);
+                      dirty(true);
+                    }}
+                  >
+                    <Plus size={15} />
+                    Contact
+                  </Button>
+                </>
               )}
               <Button
                 size="sm"
@@ -1390,21 +1408,24 @@ export function Contacts({
                         note,
                         role,
                         organization,
+                        version,
                       } = c;
+                      const picked = {
+                        id,
+                        name,
+                        phone,
+                        email,
+                        note,
+                        role,
+                        organization,
+                        version,
+                      };
                       update(
-                        contacts.map((x) =>
-                          x.id === lookupId
-                            ? {
-                                id,
-                                name,
-                                phone,
-                                email,
-                                note,
-                                role,
-                                organization,
-                              }
-                            : x,
-                        ),
+                        contacts.some((x) => x.id === lookupId)
+                          ? contacts.map((x) =>
+                              x.id === lookupId ? picked : x,
+                            )
+                          : [...contacts, picked],
                       );
                       setChoosing(false);
                       setLookup("");
@@ -1425,13 +1446,24 @@ export function Contacts({
                 type="button"
                 disabled={!lookup.trim()}
                 onClick={() => {
-                  setContacts(
-                    contacts.map((c) =>
-                      c.id === lookupId ? { ...c, name: lookup.trim() } : c,
-                    ),
+                  update(
+                    contacts.some((c) => c.id === lookupId)
+                      ? contacts.map((c) =>
+                          c.id === lookupId ? { ...c, name: lookup.trim() } : c,
+                        )
+                      : [
+                          ...contacts,
+                          {
+                            id: lookupId,
+                            name: lookup.trim(),
+                            phone: "",
+                            email: "",
+                            note: "",
+                            role: "",
+                            organization: "",
+                          },
+                        ],
                   );
-                  setChanged(true);
-                  dirty(true);
                   setChoosing(false);
                 }}
               >

@@ -92,6 +92,7 @@ test("contact database picker reuses the saved UUID and prevents duplicate selec
     ...journey.contacts[0],
     id: randomUUID(),
     name: "Saved vendor",
+    version: 7,
     source: "Internal",
     source_kind: "internal" as const,
     source_id: null,
@@ -116,6 +117,7 @@ test("contact database picker reuses the saved UUID and prevents duplicate selec
     fireEvent.click(ui.getByRole("button", { name: /^Saved vendor/ }));
     fireEvent.click(ui.getByRole("button", { name: "Add from database" }));
     assert.equal(ui.queryByRole("button", { name: /^Saved vendor/ }), null);
+    fireEvent.click(ui.getByRole("button", { name: "Tutup dialog" }));
     await act(async () =>
       fireEvent.click(ui.getByRole("button", { name: "Simpan contacts" })),
     );
@@ -123,6 +125,12 @@ test("contact database picker reuses the saved UUID and prevents duplicate selec
       (command?.data?.contacts as Journey["contacts"]).some(
         (c) => c.id === existing.id,
       ),
+    );
+    assert.equal(
+      (command?.data?.contacts as Journey["contacts"]).find(
+        (c) => c.id === existing.id,
+      )?.version,
+      7,
     );
   } finally {
     cleanup();
@@ -598,7 +606,8 @@ test("Internal Docs table opens documents and view privilege cannot edit or shar
     assert.deepEqual(
       ui
         .getAllByRole("columnheader")
-        .map((el) => el.querySelector("button")?.getAttribute("aria-label")),
+        .map((el) => el.querySelector("button")?.getAttribute("aria-label"))
+        .filter(Boolean),
       ["Kolom Judul", "Kolom Date", "Kolom Creator", "Kolom Category"],
     );
     fireEvent.click(ui.getByRole("button", { name: "SOP" }));

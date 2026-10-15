@@ -107,7 +107,7 @@ flowchart TB
     Invite --> Auth
 ```
 
-Leads/Trips share `journeys` with an immutable kind. Notes, contacts, and itineraries use versioned JSONB; tasks, cash, budgets, and Docs have separate records. Contacts are a projection over accessible documents: reused UUIDs identify shared contacts; names alone do not merge them.
+Leads/Trips share `journeys` with an immutable kind. Notes and itineraries use versioned JSONB; tasks, cash, budgets, and Docs have separate records. Contacts now have one canonical row in `public.contacts`, with ordered many-to-many links in `public.journey_contacts`. A workspace enforces unique normalized contact names. Shared edits update the canonical row and invalidate linked journey versions; removing a contact from one journey only removes that link. The directory shows accessible sources, and public Trip links cannot browse the workspace directory or change a contact shared with other records. The old `data.contacts` field remains an empty compatibility placeholder, while `private.internal_contacts` is a read-only projection of the new tables. See [contact storage and reset](CONTACTS.md).
 
 Reads use the member's credentials. Checked RPCs enforce membership, fields, workspace consistency, and versions, committing writes with audit events; direct member table writes are denied. Parent-level versions may conflict across different embedded documents. Workspace locks favor consistency; large-team throughput is unmeasured.
 

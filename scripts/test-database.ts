@@ -614,7 +614,7 @@ await test("conversion copies real draft documents without cash entries", async 
   const copied = (await snapshot("trips", {}, target)).journeys[0];
   assert.equal(copied.notes[0].body, notes[0].body);
   assert.notEqual(copied.notes[0].id, notes[0].id);
-  assert.notEqual(copied.contacts[0].id, contacts[0].id);
+  assert.equal(copied.contacts[0].id, contacts[0].id);
   assert.notEqual(copied.days[0].items[0].id, days[0].items[0].id);
   assert.equal((await snapshot("finance")).count, before);
   await cmd(
@@ -2408,8 +2408,219 @@ await test("Docs sorts and column filters run before pagination across more than
     /Sort/,
   );
 });
+await test("relational contacts store one row, detach independently and reject stale shared edits", async () => {
+  await asUser(admin);
+  const contact = {
+    id: randomUUID(),
+    name: "Relational shared fixture",
+    phone: "",
+    email: "relational@example.test",
+    role: "Vendor",
+    organization: "Fictional",
+    note: "Shared",
+  };
+  const a = await cmd("create_journey", { ...leadData, pic: admin });
+  const b = await cmd("create_journey", { ...leadData, pic: admin });
+  await cmd("content", { contacts: [contact] }, a, 1);
+  await cmd("content", { contacts: [contact] }, b, 1);
+  assert.equal(
+    (await db.query("select id from public.contacts where id=$1", [contact.id]))
+      .rows.length,
+    1,
+  );
+  assert.equal(
+    (
+      await db.query(
+        "select * from public.journey_contacts where contact_id=$1",
+        [contact.id],
+      )
+    ).rows.length,
+    2,
+  );
+  assert.deepEqual(
+    (
+      await db.query<{ data: any }>(
+        "select data from public.journeys where id=$1",
+        [a],
+      )
+    ).rows[0].data.contacts,
+    [],
+  );
+  const stale = (await snapshot("sales", {}, b)).journeys[0];
+  const canonical = (await snapshot("docs")).contactDirectory.find(
+    (c: any) => c.id === contact.id,
+  );
+  await cmd(
+    "edit_contact",
+    { contact: { ...contact, note: "Changed once" } },
+    contact.id,
+    canonical.version,
+  );
+  assert.equal(
+    (await snapshot("sales", {}, b)).journeys[0].contacts[0].note,
+    "Changed once",
+  );
+  await assert.rejects(
+    cmd("content", { contacts: stale.contacts }, b, stale.version),
+    /berubah/,
+  );
+  const fresh = (await snapshot("sales", {}, a)).journeys[0];
+  await cmd("content", { contacts: [] }, a, fresh.version);
+  assert.equal((await snapshot("sales", {}, a)).journeys[0].contacts.length, 0);
+  assert.equal(
+    (await snapshot("sales", {}, b)).journeys[0].contacts[0].id,
+    contact.id,
+  );
+  assert.equal(
+    (await db.query("select id from public.contacts where id=$1", [contact.id]))
+      .rows.length,
+    1,
+  );
+  await assert.rejects(
+    db.query("delete from public.contacts where id=$1", [contact.id]),
+  );
+  const remaining = (await snapshot("docs")).contactDirectory.find(
+    (c: any) => c.id === contact.id,
+  );
+  await assert.rejects(
+    cmd("delete_contacts", {
+      records: [
+        { id: contact.id, version: remaining.version },
+        { id: randomUUID(), version: 1 },
+      ],
+    }),
+  );
+  assert.equal(
+    (await db.query("select id from public.contacts where id=$1", [contact.id]))
+      .rows.length,
+    1,
+  );
+  await cmd("delete_contacts", {
+    records: [{ id: contact.id, version: remaining.version }],
+  });
+  assert.equal((await snapshot("sales", {}, b)).journeys[0].contacts.length, 0);
+});
+await test("relational references reject another workspace and public links cannot alter shared contacts", async () => {
+  await asUser(admin);
+  const j = (await snapshot("trips", {}, trip)).journeys[0];
+  const contact = {
+    id: randomUUID(),
+    name: "Bearer shared fixture",
+    phone: "",
+    email: "bearer@example.test",
+    role: "Vendor",
+    organization: "Fixture",
+    note: "Original",
+  };
+  await cmd("content", { contacts: [contact] }, trip, j.version);
+  const source = await cmd("create_journey", { ...leadData, pic: admin });
+  await cmd("content", { contacts: [contact] }, source, 1);
+  const token = "9".repeat(64);
+  await manageLive("create", token);
+  await anonymous();
+  const state = await liveRead(token);
+  await assert.rejects(
+    liveWrite(
+      "content",
+      { contacts: [{ ...contact, note: "Public overwrite" }] },
+      trip,
+      state.journey.version,
+      token,
+    ),
+    /Internal/,
+  );
+  await asUser(admin);
+  assert.equal(
+    (await snapshot("sales", {}, source)).journeys[0].contacts[0].note,
+    "Original",
+  );
+  await db.exec("reset role");
+  const otherW = randomUUID();
+  await db.query(
+    "insert into public.workspaces(id,name) values($1,'Other contact workspace')",
+    [otherW],
+  );
+  const other = randomUUID();
+  await db.query(
+    "insert into public.contacts(id,workspace_id,name) values($1,$2,'Foreign contact')",
+    [other, otherW],
+  );
+  await assert.rejects(
+    db.query(
+      "insert into public.journey_contacts(workspace_id,journey_id,contact_id,position) values($1,$2,$3,0)",
+      [w, source, other],
+    ),
+  );
+  await asUser(admin);
+  const fresh = (await snapshot("sales", {}, source)).journeys[0];
+  await assert.rejects(
+    cmd(
+      "content",
+      { contacts: [{ ...contact, id: other, name: "Foreign contact" }] },
+      source,
+      fresh.version,
+    ),
+    /tersedia/,
+  );
+});
+await test("contact reset removes old live and snapshot data, links every journey and preserves business records", async () => {
+  await db.exec("reset role");
+  const before = (
+    await db.query<{ n: number }>(
+      "select count(*)::int n from public.journeys where workspace_id=$1",
+      [w],
+    )
+  ).rows[0].n;
+  const txBefore = (
+    await db.query<{ n: number }>(
+      "select count(*)::int n from public.transactions",
+    )
+  ).rows[0].n;
+  await db.exec(await readFile("supabase/reset-contacts.sql", "utf8"));
+  const counts = (
+    await db.query<{
+      contacts: number;
+      links: number;
+      parents: number;
+      old: number;
+      snapshots: number;
+    }>(
+      `select
+   (select count(*)::int from public.contacts where workspace_id=$1) contacts,
+   (select count(*)::int from public.journey_contacts where workspace_id=$1) links,
+   (select count(distinct journey_id)::int from public.journey_contacts where workspace_id=$1) parents,
+   (select count(*)::int from public.contacts where workspace_id=$1 and email not like '%@travel-os.example.test') old,
+   (select count(*)::int from private.contact_share_links where workspace_id=$1 and (payload->'contacts'<>'[]'::jsonb or revoked_at is null)) snapshots`,
+      [w],
+    )
+  ).rows[0];
+  assert.deepEqual(counts, {
+    contacts: 24,
+    links: before * 3,
+    parents: before,
+    old: 0,
+    snapshots: 0,
+  });
+  assert.equal(
+    (
+      await db.query<{ n: number }>(
+        "select count(*)::int n from public.transactions",
+      )
+    ).rows[0].n,
+    txBefore,
+  );
+  assert.equal(
+    (
+      await db.query<{ n: number }>(
+        "select count(*)::int n from public.contacts where name='Foreign contact'",
+      )
+    ).rows[0].n,
+    1,
+  );
+});
 console.log(
   `Database regression: ${passed} scenarios passed (embedded PostgreSQL; hosted Auth/email/concurrency remain separate gates).`,
 );
 await db.close();
 await import("./test-refinements-migration");
+await import("./test-contacts-migration");

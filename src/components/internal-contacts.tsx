@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import type { Command, Snapshot, DirectoryContact } from "@/lib/model";
+import type { Command, Snapshot, DirectoryContact, Contact } from "@/lib/model";
 import { can } from "@/lib/format";
 import { Contacts } from "./detail";
 import { Button } from "./ui/button";
@@ -18,6 +18,7 @@ export function InternalContacts({
   onDirty: (dirty: boolean) => void;
 }) {
   const [managing, setManaging] = useState(false);
+  const [newContact, setNewContact] = useState<Contact | null>(null);
   const [search, setSearch] = useState("");
   const [dirty, setDirty] = useState(false);
   const [selected, setSelected] = useState<DirectoryContact | null>(null);
@@ -52,17 +53,34 @@ export function InternalContacts({
             <Button
               variant="outline"
               disabled={busy || dirty}
-              onClick={() => setManaging((v) => !v)}
+              onClick={() => {
+                setNewContact({
+                  id: crypto.randomUUID(),
+                  name: "",
+                  phone: "",
+                  email: "",
+                  note: "",
+                  role: "",
+                  organization: "",
+                });
+                setManaging((v) => !v);
+              }}
             >
-              {managing ? "Tutup kontak internal" : "Kelola kontak internal"}
+              {managing ? "Tutup form kontak" : "Tambah kontak"}
             </Button>
           )}
         </div>
       </div>
-      {managing && (
+      {managing && newContact && (
         <Contacts
-          j={{ id: s.user.id, ...internal }}
+          j={{
+            id: s.user.id,
+            version: internal.version,
+            contacts: [newContact],
+          }}
           edit={editable}
+          initialEditing
+          single
           busy={busy}
           run={run}
           dirty={(value) => {
@@ -73,12 +91,11 @@ export function InternalContacts({
             const saved = await run({
               action: "save_internal_contacts",
               version: internal.version,
-              data: { contacts },
+              data: { contacts: [...internal.contacts, ...contacts] },
             });
             if (saved) setManaging(false);
             return saved;
           }}
-          directory={directory}
         />
       )}
       <div className="internal-docs-toolbar">

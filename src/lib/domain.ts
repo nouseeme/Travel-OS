@@ -99,6 +99,7 @@ const contactsSchema = z
   .array(
     z.object({
       id,
+      version: z.number().int().positive().optional(),
       name: z.string().trim().min(1).max(200),
       role: z.string().max(200),
       organization: z.string().max(200),
