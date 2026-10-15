@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   FileText,
+  CircleHelp,
   LayoutGrid,
   Handshake,
   Map,
@@ -430,6 +431,10 @@ export function Dashboard() {
           </>
         )}
         <div className="sidebar-bottom">
+          <a className="help-nav-link" href="/help">
+            <CircleHelp size={18} />
+            Bantuan penggunaan
+          </a>
           <div className="sidebar-user">
             <span className="avatar">
               {initials(s?.user.name || "Travel OS")}

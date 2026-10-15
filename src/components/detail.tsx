@@ -61,7 +61,8 @@ import {
 import { Button } from "./ui/button";
 import { Modal } from "./ui/dialog";
 import { SelectionTable } from "./selection-table";
-import { contactName, uniqueContacts } from "@/lib/contacts";
+import { contactName } from "@/lib/contacts";
+import { ContactNameInput } from "./contact-name-input";
 import { Markdown } from "./markdown";
 import { RichEditor } from "./rich-editor";
 import { Budget } from "./p2";
@@ -1231,9 +1232,6 @@ export function Contacts({
   onBulkDelete?: (ids: string[]) => Promise<boolean>;
 }) {
   const [editing, setEditing] = useState(initialEditing);
-  const [lookup, setLookup] = useState("");
-  const [choosing, setChoosing] = useState(false);
-  const [lookupId, setLookupId] = useState("");
   const [newIds, setNewIds] = useState<string[]>([]);
   const edit = canEdit && editing;
   const [contacts, setContacts] = useState<Contact[]>(
@@ -1244,13 +1242,31 @@ export function Contacts({
     setContacts(structuredClone(j.contacts));
     setChanged(false);
     setEditing(initialEditing);
+    setNewIds([]);
     dirty(false);
   }, [j.version]);
   function update(next: Contact[]) {
-    setContacts(uniqueContacts(next));
+    setContacts(next);
     setChanged(true);
     dirty(true, { contacts: next });
   }
+  const duplicateName = contacts.some(
+    (c, index) =>
+      contactName(c.name) &&
+      contacts.some(
+        (other, otherIndex) =>
+          index !== otherIndex &&
+          contactName(other.name) === contactName(c.name),
+      ),
+  );
+  const unselectedExisting = contacts.some(
+    (c) =>
+      newIds.includes(c.id) &&
+      directory?.some(
+        (saved) =>
+          saved.id !== c.id && contactName(saved.name) === contactName(c.name),
+      ),
+  );
   return (
     <section className="panel spaced-panel">
       <div className="panel-heading">
@@ -1276,21 +1292,6 @@ export function Contacts({
             <>
               {!single && (
                 <>
-                  {directory && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() => {
-                        const id = crypto.randomUUID();
-                        setLookupId(id);
-                        setLookup("");
-                        setChoosing(true);
-                      }}
-                    >
-                      Add from database
-                    </Button>
-                  )}
                   <Button
                     size="sm"
                     variant="outline"
@@ -1321,7 +1322,11 @@ export function Contacts({
               <Button
                 size="sm"
                 disabled={
-                  !changed || busy || contacts.some((c) => !c.name.trim())
+                  !changed ||
+                  busy ||
+                  duplicateName ||
+                  unselectedExisting ||
+                  contacts.some((c) => !c.name.trim())
                 }
                 onClick={async () => {
                   if (
@@ -1362,117 +1367,6 @@ export function Contacts({
           )}
         </div>
       </div>
-      {edit && choosing && directory && (
-        <Modal
-          open
-          title="Cari kontak tersimpan"
-          onClose={() => setChoosing(false)}
-        >
-          <div className="contact-picker">
-            <label>
-              Cari kontak database
-              <input
-                aria-label="Cari kontak database"
-                value={lookup}
-                onChange={(e) => setLookup(e.target.value)}
-                placeholder="Nama, email, atau telepon…"
-              />
-            </label>
-            <div className="contact-picker-results">
-              {directory
-                .filter(
-                  (c) =>
-                    !contacts.some(
-                      (x) =>
-                        x.id !== lookupId &&
-                        contactName(x.name) === contactName(c.name),
-                    ),
-                )
-                .filter((c) =>
-                  [c.name, c.email, c.phone]
-                    .join(" ")
-                    .toLowerCase()
-                    .includes(lookup.toLowerCase()),
-                )
-                .map((c) => (
-                  <button
-                    type="button"
-                    key={c.id}
-                    disabled={busy}
-                    onClick={() => {
-                      const {
-                        id,
-                        name,
-                        phone,
-                        email,
-                        note,
-                        role,
-                        organization,
-                        version,
-                      } = c;
-                      const picked = {
-                        id,
-                        name,
-                        phone,
-                        email,
-                        note,
-                        role,
-                        organization,
-                        version,
-                      };
-                      update(
-                        contacts.some((x) => x.id === lookupId)
-                          ? contacts.map((x) =>
-                              x.id === lookupId ? picked : x,
-                            )
-                          : [...contacts, picked],
-                      );
-                      setChoosing(false);
-                      setLookup("");
-                    }}
-                  >
-                    <b>{c.name}</b>
-                    <small>{c.email || c.phone || "Tanpa kanal kontak"}</small>
-                  </button>
-                ))}
-            </div>
-            <small>
-              Pakai kontak yang sama; tidak membuat baris baru di direktori.
-            </small>
-            {!directory.some(
-              (c) => contactName(c.name) === contactName(lookup),
-            ) && (
-              <Button
-                type="button"
-                disabled={!lookup.trim()}
-                onClick={() => {
-                  update(
-                    contacts.some((c) => c.id === lookupId)
-                      ? contacts.map((c) =>
-                          c.id === lookupId ? { ...c, name: lookup.trim() } : c,
-                        )
-                      : [
-                          ...contacts,
-                          {
-                            id: lookupId,
-                            name: lookup.trim(),
-                            phone: "",
-                            email: "",
-                            note: "",
-                            role: "",
-                            organization: "",
-                          },
-                        ],
-                  );
-                  setChoosing(false);
-                }}
-              >
-                Gunakan nama baru “{lookup.trim()}”
-              </Button>
-            )}
-          </div>
-        </Modal>
-      )}
       {single && edit && contacts[0] ? (
         <div className="form-grid contact-edit-fields">
           {(
@@ -1551,22 +1445,27 @@ export function Contacts({
                 return (
                   <tr key={c.id}>
                     <td>
-                      {edit ? (
+                      {edit && directory && newIds.includes(c.id) ? (
+                        <ContactNameInput
+                          value={c.name}
+                          directory={directory}
+                          attached={contacts.filter((x) => x.id !== c.id)}
+                          disabled={busy}
+                          onChange={(name) => field("name", name)}
+                          onPick={(contact) =>
+                            update(
+                              contacts.map((x) =>
+                                x.id === c.id ? contact : x,
+                              ),
+                            )
+                          }
+                        />
+                      ) : edit ? (
                         <input
                           aria-label="Nama contact"
                           maxLength={200}
                           value={c.name}
-                          onChange={(e) => {
-                            if (
-                              directory &&
-                              newIds.includes(c.id) &&
-                              e.target.value.trim()
-                            ) {
-                              setLookupId(c.id);
-                              setLookup(e.target.value);
-                              setChoosing(true);
-                            } else field("name", e.target.value);
-                          }}
+                          onChange={(e) => field("name", e.target.value)}
                         />
                       ) : (
                         <b>{c.name}</b>
@@ -1680,6 +1579,14 @@ export function Contacts({
       )}
       {changed && (
         <div className="unsaved-label">Perubahan belum disimpan.</div>
+      )}
+      {duplicateName && (
+        <p role="status">Kontak dengan nama ini sudah ditambahkan.</p>
+      )}
+      {unselectedExisting && !duplicateName && (
+        <p role="status">
+          Nama ini sudah tersimpan. Pilih kontak yang ada dari dropdown.
+        </p>
       )}
     </section>
   );

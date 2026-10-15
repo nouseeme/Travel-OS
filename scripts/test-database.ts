@@ -77,6 +77,80 @@ async function test(name: string, fn: () => Promise<void>) {
   console.log("PASS " + name);
 }
 await asUser(admin);
+await test("help is public by default; secret requires active membership regardless of privileges", async () => {
+  const access = async () =>
+    (
+      await db.query<{ a: { public: boolean; allowed: boolean } }>(
+        "select public.help_access() a",
+      )
+    ).rows[0].a;
+  const config = (await snapshot("configuration")).helpSettings;
+  assert.deepEqual(config, { public: true, version: 1 });
+  await db.exec("reset role; set role anon");
+  await db.query("select set_config('request.jwt.claim.sub','',false)");
+  assert.deepEqual(await access(), { public: true, allowed: true });
+  await assert.rejects(db.query("select * from public.workspaces"));
+  await assert.rejects(
+    db.query("select private.snapshot_before_help('configuration','{}',null)"),
+  );
+  await asUser(sales);
+  await assert.rejects(
+    cmd("save_help_access", { public: false }, undefined, 1),
+  );
+  await asUser(admin);
+  await assert.rejects(
+    cmd("save_help_access", { public: "false" }, undefined, 1),
+  );
+  await cmd("save_help_access", { public: false }, undefined, 1);
+  await assert.rejects(cmd("save_help_access", { public: true }, undefined, 1));
+  await db.exec("reset role;set role anon");
+  await db.query("select set_config('request.jwt.claim.sub','',false)");
+  assert.deepEqual(await access(), { public: false, allowed: false });
+  const unprivileged = randomUUID(),
+    outsider = randomUUID();
+  await db.exec("reset role");
+  await db.query(
+    "insert into auth.users(id,email) values($1,'help-member@example.test'),($2,'help-outsider@example.test')",
+    [unprivileged, outsider],
+  );
+  await db.query(
+    "insert into public.memberships(id,workspace_id,name,email,role,status,privileges) values($1,$2,'Help member','help-member@example.test','member','active',$3)",
+    [
+      unprivileged,
+      w,
+      JSON.stringify({
+        sales: "none",
+        trips: "none",
+        finance: "none",
+        docs: "none",
+      }),
+    ],
+  );
+  await asUser(unprivileged);
+  assert.equal((await access()).allowed, true);
+  await assert.rejects(snapshot("configuration"));
+  await assert.rejects(cmd("save_help_access", { public: true }, undefined, 2));
+  await asUser(outsider);
+  assert.equal((await access()).allowed, false);
+  for (const status of ["invited", "deactivated"]) {
+    await db.exec("reset role");
+    await db.query("update public.memberships set status=$2 where id=$1", [
+      unprivileged,
+      status,
+    ]);
+    await asUser(unprivileged);
+    assert.equal((await access()).allowed, false);
+  }
+  await asUser(admin);
+  await cmd("save_help_access", { public: true }, undefined, 2);
+  await db.exec("reset role");
+  await db.query("delete from public.memberships where id=$1", [unprivileged]);
+  await db.query("delete from auth.users where id in ($1,$2)", [
+    unprivileged,
+    outsider,
+  ]);
+  await asUser(admin);
+});
 const leadData = {
   kind: "lead",
   client: "Sekolah Nusantara",

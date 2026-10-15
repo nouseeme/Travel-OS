@@ -199,6 +199,9 @@ export function Auth({ passwordMode = false }: { passwordMode?: boolean }) {
             </button>
           )}
           <div className="auth-foot">
+            <a className="help-nav-link" href="/help">
+              Bantuan penggunaan
+            </a>
             Akses melalui invitation. Hubungi admin tim Anda untuk bergabung.
             <PlatformFooter />
           </div>

@@ -1,6 +1,9 @@
 import { PGlite } from "@electric-sql/pglite";
 import { readFile, readdir } from "node:fs/promises";
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { validateContent } from "../src/lib/domain";
+import type { Journey } from "../src/lib/model";
 const db = new PGlite();
 await db.exec(
   `create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key,email text,encrypted_password text);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;`,
@@ -95,6 +98,21 @@ const after = (
   )
 ).rows[0].data;
 assert.deepEqual(after, { ...before, contacts: [] });
+const trip = await command({
+  action: "create_journey",
+  data: {
+    kind: "trip",
+    name: "Trip contact fixture",
+    client: "Fixture",
+    pic: actor,
+    people: [actor],
+    start: "2026-11-01",
+    end: "2026-11-02",
+    guests: 4,
+    trip_type: "Leisure",
+    client_type: "Individual",
+  },
+});
 await db.exec(await readFile("supabase/reset-contacts.sql", "utf8"));
 assert.equal(
   (await db.query<{ n: number }>("select count(*)::int n from public.contacts"))
@@ -137,5 +155,112 @@ assert.deepEqual(
 );
 console.log(
   "PASS populated contact migration normalizes shared contacts; scoped reset removes legacy data and preserves journey details",
+);
+// Reproduce the previous hosted dataset, whose UUID bytes came from arbitrary MD5.
+const invalidId = "91af7cd7-99c6-ac8a-2fea-cffc88bae7d6";
+await db.query(
+  "insert into public.contacts(id,workspace_id,name,email,note) values($1,$2,'Legacy dummy UUID fixture','legacy-uuid@example.test','Keep every detail')",
+  [invalidId, w],
+);
+for (const id of [lead, trip])
+  await db.query(
+    "insert into public.journey_contacts(workspace_id,journey_id,contact_id,position) values($1,$2,$3,3)",
+    [w, id, invalidId],
+  );
+assert.throws(
+  () => validateContent({ contacts: [{ ...contact, id: invalidId }] }),
+  /Invalid UUID/,
+);
+const repair = files.find((f) => f.includes("repair_demo_contact_ids"))!;
+await db.exec(await readFile("supabase/migrations/" + repair, "utf8"));
+const repaired = (
+  await db.query<{ id: string; note: string }>(
+    "select id,note from public.contacts where email='legacy-uuid@example.test'",
+  )
+).rows[0];
+assert.notEqual(repaired.id, invalidId);
+assert.equal(repaired.note, "Keep every detail");
+assert.equal(
+  (
+    await db.query(
+      "select * from public.journey_contacts where contact_id=$1",
+      [repaired.id],
+    )
+  ).rows.length,
+  2,
+);
+assert.equal(
+  (await db.query("select id from public.contacts")).rows.length,
+  25,
+);
+await db.exec(await readFile("supabase/migrations/" + repair, "utf8"));
+assert.equal(
+  (await db.query("select id from public.contacts where id=$1", [repaired.id]))
+    .rows.length,
+  1,
+);
+console.log(
+  "PASS legacy contact ID repair retains fields and both parent links, and is idempotent",
+);
+const member = randomUUID();
+await db.query(
+  "insert into auth.users(id,email) values($1,'contact-member@example.test')",
+  [member],
+);
+await db.query(
+  "insert into public.memberships(id,workspace_id,name,email,role,status,privileges) values($1,$2,'Contact member','contact-member@example.test','member','active',$3)",
+  [
+    member,
+    w,
+    JSON.stringify({
+      sales: "edit",
+      trips: "edit",
+      finance: "none",
+      docs: "none",
+    }),
+  ],
+);
+await db.query("select set_config('request.jwt.claim.sub',$1,false)", [member]);
+await db.exec("set role authenticated");
+for (const [view, id] of [
+  ["sales", lead],
+  ["trips", trip],
+] as const) {
+  const journey = (
+    await db.query<{ s: { journeys: Journey[] } }>(
+      "select public.app_snapshot($1,'{}',$2) s",
+      [view, id],
+    )
+  ).rows[0].s.journeys[0];
+  const added = {
+    id: randomUUID(),
+    name: `Brand new ${view} contact`,
+    phone: "",
+    email: "",
+    role: "",
+    organization: "",
+    note: "",
+  };
+  const data = { contacts: [...journey.contacts, added] };
+  // Exercise the HTTP validator as well as SQL: the browser submits existing rows too.
+  validateContent(data);
+  await command({ action: "content", id, version: journey.version, data });
+  assert.equal(
+    (await db.query("select id from public.contacts where id=$1", [added.id]))
+      .rows.length,
+    1,
+  );
+  assert.equal(
+    (
+      await db.query(
+        "select * from public.journey_contacts where journey_id=$1",
+        [id],
+      )
+    ).rows.length,
+    journey.contacts.length + 1,
+  );
+}
+console.log(
+  "PASS new CRM/Trip contact submissions pass the real API validator with seeded existing contacts and persist their links",
 );
 await db.close();

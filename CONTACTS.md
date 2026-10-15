@@ -10,6 +10,7 @@ Journey detail responses still expose a `contacts` array for the UI, assembled f
 
 - Internal → Contacts lists the canonical directory. Add creates a database record; row Edit changes that record everywhere; bulk Delete removes it and all its links atomically.
 - Trip/CRM contact forms can link saved contacts, create new contacts and unlink rows. Changing an existing contact requires Internal edit permission and its current contact version.
+- When adding a row in CRM/Trip, the name field searches saved contacts in an inline dropdown. Choosing an existing contact retains its UUID/version and fills its details. A new name offers “Tambah kontak baru”; typing updates the draft immediately, so it can be saved without first creating a database record elsewhere. The separate search modal and “Add from database” button have been removed. Duplicate attached names and unselected exact matches prevent saving until resolved.
 - Shared edits invalidate all linked journey versions, including archives, so an old open form cannot overwrite the change. Batch deletion validates every record and rolls back on a stale/missing entry.
 - Table reads use RLS. Internal readers can see the directory; other module readers see contacts linked to accessible journeys. Link reads expose only accessible parents. All application writes use audited command functions; direct table writes are denied.
 - Bearer links see only their Trip's contacts. They can create/unlink contacts and edit a contact exclusive to that Trip. Editing a shared or Internal contact requires Internal edit access. Token revocation, tab permissions, lifecycle and parent versions are checked before writes.
@@ -34,3 +35,11 @@ Applied `contact_name_index_bulk_actions`, `shared_contacts_relational`, and the
 Security advisors reported no warning for the new public tables. The private state table intentionally has RLS with no direct-access policies, matching the RPC-only private tables. The existing Auth leaked-password protection warning remains unrelated to this migration.
 
 Validation: 58 database scenarios plus both populated migration fixtures passed; 50 application tests passed; TypeScript passed; production build passed using `npm run build -- --webpack`. Default Turbopack failed while starting its CSS worker in this Windows environment. UI changes are local and have not been committed, pushed or deployed; the database migrations and reset are already applied to hosted Supabase.
+
+## Contact submission fix, 15 October 2026
+
+The original reset derived contact IDs from raw MD5 bytes. PostgreSQL accepted them, but 20 of 24 IDs failed the application's RFC UUID validator. CRM/Trip submissions include their existing contacts, so adding a valid new contact still failed with `contacts: Invalid UUID`. Earlier form tests used valid random UUIDs and did not exercise this seeded-data/API boundary.
+
+Applied `repair_demo_contact_ids` to hosted Supabase. It atomically replaced invalid IDs, retained all contact fields and ordered links, and advanced affected journey versions. Verified zero invalid IDs, the same 24 contacts and 201 links, and unchanged hashes of contact contents, semantic links and journey details. Hosted rollback-only tests created and linked a new contact from both CRM and Trip. Open editors must refresh to load the repaired identifiers.
+
+Future resets now use the table's default `gen_random_uuid()` and resolve dummy links by their fixture email. The populated migration regression now runs actual seeded CRM/Trip submissions through `validateContent` and `app_command`, verifies legacy ID repair, and checks persistence as a member with Sales/Trips edit and no Internal access.

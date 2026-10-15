@@ -482,17 +482,20 @@ export function Configuration({
           ["trip-stages", "Pipeline Trips"],
           ["categories", "Kategori Finance"],
           ["templates", "Templates"],
+          ["help", "Halaman bantuan"],
         ]
           .filter(([id]) =>
-            id === "stages"
-              ? can(s.user, "sales", true)
-              : id === "trip-stages"
-                ? can(s.user, "trips", true)
-                : id === "categories"
-                  ? can(s.user, "finance", true)
-                  : ["sales", "trips", "docs"].some((m) =>
-                      can(s.user, m as "sales" | "trips" | "docs", true),
-                    ),
+            id === "help"
+              ? s.user.role === "admin"
+              : id === "stages"
+                ? can(s.user, "sales", true)
+                : id === "trip-stages"
+                  ? can(s.user, "trips", true)
+                  : id === "categories"
+                    ? can(s.user, "finance", true)
+                    : ["sales", "trips", "docs"].some((m) =>
+                        can(s.user, m as "sales" | "trips" | "docs", true),
+                      ),
           )
           .map(([id, label]) => (
             <button
@@ -509,6 +512,47 @@ export function Configuration({
           ))}
       </div>
       {formError && <p role="alert">{formError}</p>}
+      {section === "help" && (
+        <section className="configuration-list">
+          <h2>Akses halaman bantuan</h2>
+          <p>
+            Panduan penggunaan tersedia di{" "}
+            <a href="/help" className="text-button">
+              /help
+            </a>
+            . Pengaturan ini hanya mengatur akses ke panduan.
+          </p>
+          <label className="help-access-toggle">
+            <input
+              type="checkbox"
+              role="switch"
+              checked={s.helpSettings?.public ?? false}
+              disabled={busy || !s.helpSettings}
+              onChange={(e) =>
+                void run({
+                  action: "save_help_access",
+                  version: s.helpSettings?.version,
+                  data: { public: e.target.checked },
+                })
+              }
+            />
+            <span>
+              <b>Publik</b>
+              <small>
+                {s.helpSettings?.public
+                  ? "Siapa pun dapat membaca panduan tanpa login."
+                  : "Secret — hanya anggota aktif yang sudah login, apa pun hak akses modulnya."}
+              </small>
+            </span>
+          </label>
+          {!s.helpSettings && (
+            <p role="alert">
+              Pengaturan bantuan belum tersedia. Periksa migrasi database lalu
+              muat ulang.
+            </p>
+          )}
+        </section>
+      )}
       <section className="configuration-list" hidden={section !== "stages"}>
         <h2>Sales stages</h2>
         <p>

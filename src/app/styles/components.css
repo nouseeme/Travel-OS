@@ -3036,39 +3036,42 @@
 .column-menu .row-actions {
   flex-wrap: wrap;
 }
-.contact-picker {
-  margin: 12px 0;
-  padding: 14px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  display: grid;
-  gap: 10px;
-}
-.contact-picker label {
-  display: grid;
-  gap: 6px;
-}
-.contact-picker-results {
-  max-height: 240px;
+.contact-name-options {
+  position: fixed;
+  z-index: 130;
+  padding: 6px;
   overflow: auto;
   display: grid;
   gap: 4px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--control-border, #e2e8f0);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm, 0 4px 16px #0002);
 }
-.contact-picker-results button {
+.contact-name-options button {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: transparent;
+  border: 0;
   border-radius: 6px;
   padding: 10px;
   cursor: pointer;
   text-align: left;
 }
-.contact-picker-results button:hover {
-  background: #eff6ff;
+.contact-name-options button:hover,
+.contact-name-options button[aria-selected="true"] {
+  background: var(--hover, #eff6ff);
+}
+.contact-name-options small,
+.contact-name-options p {
+  color: var(--muted, #64748b);
+  overflow-wrap: anywhere;
+}
+.contact-name-options p {
+  margin: 0;
+  padding: 10px;
 }
 .contact-sources {
   white-space: normal;
@@ -3085,7 +3088,57 @@
 .contact-edit-fields label {
   min-width: 0;
 }
-.selection-cell { width:40px !important;min-width:40px !important;padding:10px !important; }
-.selection-cell input { width:16px;min-height:16px;height:16px;cursor:pointer; }
-.bulk-toolbar { display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;background:#edf3ed;border:1px solid var(--line);border-radius:8px;margin:8px 0; }
-.contact-sources a { cursor:pointer; }
+.selection-cell {
+  width: 40px !important;
+  min-width: 40px !important;
+  padding: 10px !important;
+}
+.selection-cell input {
+  width: 16px;
+  min-height: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+.bulk-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  background: #edf3ed;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 8px 0;
+}
+.contact-sources a {
+  cursor: pointer;
+}
+.help-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.help-nav-link:hover {
+  color: var(--green);
+}
+.help-access-toggle {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 0;
+  cursor: pointer;
+}
+.help-access-toggle input {
+  width: 38px;
+  height: 22px;
+  accent-color: var(--green);
+  flex-shrink: 0;
+}
+.help-access-toggle small {
+  display: block;
+  margin-top: 6px;
+  line-height: 1.7;
+}

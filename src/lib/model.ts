@@ -175,6 +175,7 @@ export interface Filters {
   pic?: string;
 }
 export interface Snapshot {
+  helpSettings?: { public: boolean; version: number };
   homeTaskCount?: number;
   contactDirectory?: DirectoryContact[];
   internalContacts?: { contacts: Contact[]; version: number };

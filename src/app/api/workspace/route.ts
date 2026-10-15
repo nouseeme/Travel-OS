@@ -21,6 +21,7 @@ const commandSchema = z.object({
     }, "Timezone tidak valid.")
     .default("UTC"),
   action: z.enum([
+    "save_help_access",
     "edit_contact",
     "bulk_action",
     "delete_contacts",
@@ -107,6 +108,8 @@ export async function POST(request: Request) {
   try {
     originCheck(request);
     const command = commandSchema.parse(await body(request));
+    if (command.action === "save_help_access")
+      z.object({ public: z.boolean() }).strict().parse(command.data);
     if (command.action === "content") validateContent(command.data || {});
     if (command.action === "edit_contact")
       validateContent({ contacts: [command.data?.contact] });

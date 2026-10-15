@@ -87,6 +87,66 @@ test("contacts return to a table after save and retain inputs after a failed sav
   }
 });
 
+test("CRM and Trip can save a newly typed contact absent from the database", async () => {
+  for (const kind of ["lead", "trip"] as const) {
+    let command: Command | undefined;
+    const draft: Journey = { ...journey, kind, contacts: [] };
+    const ui = render(
+      <Contacts
+        j={draft}
+        edit
+        initialEditing
+        busy={false}
+        directory={[]}
+        dirty={() => {}}
+        run={async (c) => {
+          command = c;
+          return true;
+        }}
+      />,
+    );
+    try {
+      fireEvent.click(ui.getByRole("button", { name: /^Contact$/ }));
+      const name = ui.getByRole("combobox", {
+        name: "Nama contact",
+      }) as HTMLInputElement;
+      fireEvent.change(name, { target: { value: "Vendor Baru Bandung" } });
+      assert.equal(
+        name.value,
+        "Vendor Baru Bandung",
+        "Typing must update the actual contact draft",
+      );
+      assert.equal(ui.queryByRole("dialog"), null);
+      const addNew = ui.getByRole("option", {
+        name: /Tambah kontak baru “Vendor Baru Bandung”/,
+      });
+      if (kind === "lead") fireEvent.click(addNew);
+      else fireEvent.keyDown(name, { key: "Escape" });
+      assert.equal(ui.queryByRole("listbox"), null);
+      assert.equal(name.value, "Vendor Baru Bandung");
+      fireEvent.change(ui.getByRole("textbox", { name: "Email contact" }), {
+        target: { value: "vendor.baru@example.test" },
+      });
+      assert.equal(
+        (
+          ui.getByRole("button", {
+            name: "Simpan contacts",
+          }) as HTMLButtonElement
+        ).disabled,
+        false,
+      );
+      await act(async () =>
+        fireEvent.click(ui.getByRole("button", { name: "Simpan contacts" })),
+      );
+      const saved = (command?.data?.contacts as Journey["contacts"])[0];
+      assert.equal(saved.name, "Vendor Baru Bandung");
+      assert.equal(saved.email, "vendor.baru@example.test");
+    } finally {
+      cleanup();
+    }
+  }
+});
+
 test("contact database picker reuses the saved UUID and prevents duplicate selection", async () => {
   const existing = {
     ...journey.contacts[0],
@@ -113,11 +173,14 @@ test("contact database picker reuses the saved UUID and prevents duplicate selec
   );
   try {
     fireEvent.click(ui.getByRole("button", { name: "Edit contacts" }));
-    fireEvent.click(ui.getByRole("button", { name: "Add from database" }));
-    fireEvent.click(ui.getByRole("button", { name: /^Saved vendor/ }));
-    fireEvent.click(ui.getByRole("button", { name: "Add from database" }));
-    assert.equal(ui.queryByRole("button", { name: /^Saved vendor/ }), null);
-    fireEvent.click(ui.getByRole("button", { name: "Tutup dialog" }));
+    assert.equal(ui.queryByRole("button", { name: "Add from database" }), null);
+    fireEvent.click(ui.getByRole("button", { name: /^Contact$/ }));
+    const name = ui.getByRole("combobox", { name: "Nama contact" });
+    fireEvent.change(name, { target: { value: "Saved" } });
+    assert.equal(ui.queryByRole("dialog"), null);
+    assert.ok(ui.getByRole("option", { name: /^Saved vendor/ }));
+    fireEvent.keyDown(name, { key: "ArrowDown" });
+    fireEvent.keyDown(name, { key: "Enter" });
     await act(async () =>
       fireEvent.click(ui.getByRole("button", { name: "Simpan contacts" })),
     );
@@ -131,6 +194,18 @@ test("contact database picker reuses the saved UUID and prevents duplicate selec
         (c) => c.id === existing.id,
       )?.version,
       7,
+    );
+    fireEvent.click(ui.getByRole("button", { name: "Edit contacts" }));
+    fireEvent.click(ui.getByRole("button", { name: /^Contact$/ }));
+    fireEvent.change(ui.getByRole("combobox", { name: "Nama contact" }), {
+      target: { value: "Saved vendor" },
+    });
+    assert.equal(ui.queryByRole("option", { name: /^Saved vendor/ }), null);
+    assert.ok(ui.getByText("Kontak ini sudah ditambahkan."));
+    assert.equal(
+      (ui.getByRole("button", { name: "Simpan contacts" }) as HTMLButtonElement)
+        .disabled,
+      true,
     );
   } finally {
     cleanup();
