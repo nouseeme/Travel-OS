@@ -7,6 +7,10 @@ node_modules/
 coverage/
 supabase/.temp/
 
+# Local opencode config (project-specific MCP servers)
+opencode.json
+opencode.jsonc
+
 # Private working documents and operator artifacts
 /docs/
 /Travel-OS-MVP-PRD.md

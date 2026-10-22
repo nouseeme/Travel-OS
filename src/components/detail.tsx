@@ -783,7 +783,6 @@ function Itinerary({ j, edit: canEdit, busy, run, dirty }: ContentProps) {
     j.start && j.end
       ? Math.round((Date.parse(j.end) - Date.parse(j.start)) / 86400000) + 1
       : 0;
-  const mismatch = j.kind === "trip" && duration < days.length;
   return (
     <section className="spaced-panel">
       <div className="section-toolbar">
@@ -887,13 +886,6 @@ function Itinerary({ j, edit: canEdit, busy, run, dirty }: ContentProps) {
           )}
         </div>
       </div>
-      {mismatch && (
-        <div className="notice warning">
-          Itinerary memiliki {days.length} day, tetapi durasi trip {duration}{" "}
-          hari. Konten tetap tersimpan; sharing diblokir sampai mismatch
-          diselesaikan.
-        </div>
-      )}
       <DndContext sensors={sensors} onDragEnd={drop}>
         {days.map((day, di) => (
           <DaySection
