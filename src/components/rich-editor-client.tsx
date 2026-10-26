@@ -14,6 +14,7 @@ import {
   Undo2,
   Redo2,
   Quote,
+  Table2,
 } from "lucide-react";
 import { editorExtensions, safeEditorLink } from "@/lib/editor-extensions";
 import type { RichEditorProps } from "./rich-editor";
@@ -156,6 +157,24 @@ export default function RichEditorClient({
             <t.icon size={16} />
           </button>
         ))}
+        <button
+          type="button"
+          title="Buat tabel (3 kolom)"
+          aria-label="Buat tabel (3 kolom)"
+          disabled={
+            disabled ||
+            !editor.can().insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+          }
+          onClick={() =>
+            editor
+              .chain()
+              .focus()
+              .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+              .run()
+          }
+        >
+          <Table2 size={16} />
+        </button>
         <button
           type="button"
           aria-label="Insert or edit link"
