@@ -2899,22 +2899,29 @@
   box-shadow: 0 8px 24px #18232e14;
 }
 .shared-trip-shell {
-  margin: auto;
-  width: 100%;
   min-width: 0;
-  max-width: 1200px;
-  background: var(--paper);
-  border-inline: 1px solid var(--line);
-  min-height: 100dvh;
+  max-width: 1080px;
+  min-height: calc(100dvh - 48px);
+  width: 100%;
+  margin: 0 auto;
+  background: transparent;
+  border: 0;
+  border-inline: 0;
+  display: flex;
+  flex-direction: column;
 }
 .shared-trip-header {
   border-bottom: 1px solid #e2e6e9;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-4);
   background: var(--paper);
-  padding: 20px var(--page-gutter);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 24px;
+  gap: 16px;
+  margin-bottom: 24px;
+  justify-content: space-between;
 }
 .people-grid {
   display: grid;
@@ -3599,4 +3606,178 @@
   padding: 0;
   border-radius: 5px;
   color: var(--muted);
+}
+.shared-trip-page {
+  min-height: 100dvh;
+  background: var(--bg);
+  padding: 24px;
+}
+.shared-trip-header .company-identity img {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+}
+.shared-trip-header .company-identity b {
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+.shared-trip-header .company-identity small {
+  font-size: 12px;
+  margin-top: 2px;
+}
+.shared-trip-content {
+  padding: 0;
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  flex: 1;
+}
+.shared-trip-shell .public-record-heading {
+  background: transparent;
+  border: 0;
+  padding: 4px 0 24px;
+  border-radius: 0;
+  gap: 20px;
+  align-items: center;
+}
+.public-record-heading .card-tags {
+  margin-bottom: 10px;
+}
+.public-record-heading h1 {
+  font-size: clamp(1.625rem, 2.2vw, 2rem);
+  line-height: 1.3;
+  letter-spacing: -0.035em;
+  margin: 0 0 8px;
+}
+.public-record-heading p {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.public-record-heading .heading-actions:empty {
+  display: none;
+}
+.shared-trip-shell .detail-tabs {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 4px 12px;
+  margin: 0 0 24px;
+  gap: 16px;
+  scrollbar-width: thin;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+}
+.shared-trip-shell .detail-tabs button {
+  min-height: 42px;
+  padding: 10px 12px;
+  font-size: 13px;
+  border-bottom: 0;
+  border-radius: 6px;
+  margin: 0;
+  flex: 0 0 auto;
+}
+.shared-trip-shell .detail-tabs button.selected {
+  background: var(--surface-inset);
+  color: var(--ink);
+  font-weight: 550;
+}
+.shared-trip-shell .panel {
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: none;
+}
+.shared-trip-shell .panel-heading {
+  margin: 0 0 20px;
+  align-items: center;
+}
+.shared-trip-shell .panel-heading h2 {
+  font-size: 17px;
+  font-weight: 600;
+}
+.shared-trip-shell .record-summary .facts-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+.shared-trip-shell .facts-grid small {
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.shared-trip-shell .facts-grid b {
+  font-size: 14px;
+  line-height: 1.6;
+  font-weight: 500;
+}
+.shared-trip-shell .panel.itinerary-day {
+  padding: 0;
+  overflow: hidden;
+}
+.shared-trip-shell .day-heading {
+  background: var(--surface-soft);
+  padding: 16px 20px;
+  gap: 12px;
+}
+.shared-trip-shell .itinerary-columns {
+  padding: 12px 20px;
+  grid-template-columns: minmax(160px, 1fr) minmax(0, 2fr);
+  font-size: 12px;
+}
+.shared-trip-shell .itinerary-row {
+  padding: 18px 20px;
+  gap: 24px;
+  grid-template-columns: minmax(160px, 1fr) minmax(0, 2fr);
+}
+.shared-trip-shell .item-name {
+  font-size: 14px;
+  line-height: 1.7;
+}
+.shared-trip-shell .plain-note {
+  font-size: 14px;
+  line-height: 1.8;
+}
+.shared-trip-shell .task-row {
+  padding: 14px 0;
+  gap: 10px;
+}
+.shared-trip-shell .task-row p {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.shared-trip-shell .notes-panel .note-body {
+  min-width: 0;
+}
+.shared-trip-shell .markdown {
+  font-size: 14px;
+  line-height: 1.85;
+}
+.shared-trip-shell .public-finance .table-wrap {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.shared-trip-shell .public-finance table {
+  min-width: 620px;
+}
+.shared-trip-shell .public-finance td {
+  padding: 14px 16px;
+  font-size: 13px;
+}
+.shared-trip-shell .public-finance td:nth-child(4) {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.shared-trip-shell > .platform-footer {
+  background: transparent;
+  border-top: 0;
+  padding: 24px 0 0;
+  margin: auto 0 0;
+  font-size: 12px;
+}
+.shared-trip-unavailable {
+  max-width: 560px;
+  margin: 48px auto;
+  padding: 32px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  min-height: auto;
 }

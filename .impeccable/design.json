@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-26T10:25:33.606638+00:00",
+  "generatedAt": "2026-10-26T13:30:33.571Z",
   "title": "Design System: travelOS · Egimu Travel",
   "extensions": {
     "colorMeta": {
@@ -258,6 +258,10 @@
       "metric": {
         "displayName": "Metric",
         "purpose": "Tabular summary counts."
+      },
+      "source-code": {
+        "displayName": "Markdown Source",
+        "purpose": "Literal raw Markdown source only; interface text uses Plus Jakarta Sans."
       }
     },
     "shadows": [
@@ -437,11 +441,27 @@
       "description": "Title, toolbar, and body share the parent writing surface.",
       "html": "<section class=\"ds-notes\"><input class=\"ds-note-title\" aria-label=\"Judul catatan\" value=\"Catatan perjalanan\"><div class=\"ds-note-tools\"><button class=\"ds-note-tool\" aria-label=\"Bold\"><b>B</b></button></div><div class=\"ds-note-content\" contenteditable=\"true\" role=\"textbox\" aria-label=\"Isi catatan\">Tulis catatan perjalanan di sini.</div></section>",
       "css": ".ds-notes{font-family:var(--font-sans,\"Plus Jakarta Sans\",system-ui,sans-serif);color:var(--ink,#242a30);background:var(--paper,#fff);} .ds-note-title{font-family:var(--font-sans,\"Plus Jakarta Sans\",system-ui,sans-serif);width:100%;padding:6px 0 18px;border:0;border-bottom:1px solid var(--line,#e5e8ec);border-radius:0;background:transparent;color:inherit;font-size:16px;font-weight:600;} .ds-note-title:focus-visible{outline:3px solid var(--green,#326652);outline-offset:3px;} .ds-note-tools{display:flex;padding:8px 0;border-bottom:1px solid var(--line,#e5e8ec);} .ds-note-tool{display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:6px;background:transparent;color:inherit;cursor:pointer;} .ds-note-tool:focus-visible{outline:3px solid var(--green,#326652);outline-offset:3px;} .ds-note-content{min-height:220px;padding:16px 0;font-size:16px;line-height:1.8;overflow-wrap:anywhere;} .ds-note-content:focus-visible{outline:2px solid var(--green-soft,#edf4f0);outline-offset:2px;} @media(hover:hover) and (pointer:fine){.ds-note-tool:hover{background:var(--green-soft,#edf4f0);color:var(--green,#326652);}}"
+    },
+    {
+      "name": "Compact Task Item",
+      "kind": "card",
+      "refersTo": "task-item",
+      "description": "Home tasks remain Kanban with only title, note, due date, source and status; existing actions remain.",
+      "html": "<article class=\"ds-task\"><strong>Task perjalanan</strong><p>Catatan task</p><footer><span>Due date · Sumber</span><select aria-label=\"Status\"><option>Assigned</option><option>Doing</option><option>Done</option></select></footer></article>",
+      "css": ".ds-task{font-family:\"Plus Jakarta Sans\",system-ui,sans-serif;background:#fff;border:1px solid #e5e8ec;border-radius:8px;padding:12px;color:#242a30}.ds-task strong{font-size:13px;font-weight:550;line-height:1.5}.ds-task p{font-size:12px;line-height:1.5;color:#626b74;margin:4px 0}.ds-task footer{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;font-size:12px;color:#626b74}.ds-task select{width:104px;min-height:30px;border:1px solid #e5e8ec;border-radius:6px;background:#fff;padding:4px 20px 4px 7px;font:12px \"Plus Jakarta Sans\",system-ui,sans-serif}@media(pointer:coarse){.ds-task select{min-height:44px;width:124px;font-size:16px}}"
+    },
+    {
+      "name": "Public Trip Header",
+      "kind": "custom",
+      "refersTo": "public-panel",
+      "description": "Public viewer uses a centered neutral shell and a branded header; no private workspace identifiers.",
+      "html": "<header class=\"ds-public-header\"><div><b>Egimu Travel</b><small>Detail perjalanan</small></div><button>Refresh</button></header>",
+      "css": ".ds-public-header{font-family:\"Plus Jakarta Sans\",system-ui,sans-serif;display:flex;align-items:center;justify-content:space-between;gap:16px;background:#fff;border:1px solid #e5e8ec;border-radius:12px;padding:16px 24px;color:#242a30}.ds-public-header b{font-size:14px}.ds-public-header small{display:block;color:#626b74;font-size:12px;margin-top:2px}.ds-public-header button{font:13px \"Plus Jakarta Sans\",system-ui,sans-serif;border:1px solid #cbd1d8;border-radius:8px;padding:8px 12px;background:white;color:#242a30}"
     }
   ],
   "narrative": {
     "northStar": "A calm travel desk",
-    "overview": "The workspace presents operational information on a cool neutral canvas with white work surfaces, charcoal actions, and quiet semantic color. A floating labelled navigation panel, open columns, grouped facts, and shared metric strips make context and work easy to skim. Plus Jakarta Sans supplies both headings and working text.\n\nThe visual system describes the implemented October 26, 2026 redesign. Preserve travelOS, Egimu Travel, and the existing brand image at `public/brand/egimu-logo.jpg`. Existing routes, actions, forms, permission boundaries, financial meanings, and recovery behavior remain authoritative. See PRODUCT.md for product constraints and the surface brief for the approved direction; this document records reusable visual rules.",
+    "overview": "The workspace presents operational information on a cool neutral canvas with white work surfaces, charcoal actions, and quiet semantic color. A floating labelled navigation panel, open columns, grouped facts, and shared metric strips make context and work easy to skim. Plus Jakarta Sans supplies both headings and working text.\n\nThe visual system describes the implemented October 26, 2026 redesign. Preserve travelOS, Egimu Travel, and the existing brand image at `public/brand/egimu-logo.jpg`. Existing routes, actions, forms, permission boundaries, financial meanings, and recovery behavior remain authoritative. See PRODUCT.md for product constraints and the surface brief for the approved direction; this document records reusable visual rules.\n\nHome uses three Kanban columns with compact task items, not a task table. Five displayed fields: title, note, due date, source, status. Task padding12px/radius8px; journey cards padding14px/radius10px. Existing interaction handlers remain.\n\nPublic Share Trip: centered1080px shell,24px outer padding, branded white header, horizontally scrollable tabs, clear published facts, flat itinerary/Notes and consistent modal fields. Phones use12px outer gutters. No private stage IDs are displayed.\n\nConsolas, monospace remains reserved for the existing raw Markdown source field; UI uses Plus Jakarta Sans.",
     "keyCharacteristics": [
       "Cool neutral canvas and white work surfaces.",
       "Charcoal actions with restrained semantic sage, blue, and amber.",

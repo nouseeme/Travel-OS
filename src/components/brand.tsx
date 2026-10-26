@@ -14,9 +14,11 @@ export function ProductBrand() {
 export function CompanyIdentity({
   large = false,
   logoOnly = false,
+  caption,
 }: {
   large?: boolean;
   logoOnly?: boolean;
+  caption?: string;
 }) {
   return (
     <div className={"company-identity" + (large ? " large" : "")}>
@@ -30,7 +32,8 @@ export function CompanyIdentity({
         <div>
           <b>Egimu Travel</b>
           <small>
-            {large ? "Ruang kerja operasional perjalanan" : "Team workspace"}
+            {caption ||
+              (large ? "Ruang kerja operasional perjalanan" : "Team workspace")}
           </small>
         </div>
       )}

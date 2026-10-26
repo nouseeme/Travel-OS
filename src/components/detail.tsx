@@ -178,14 +178,18 @@ export function Detail({
           Kembali ke {j.kind === "lead" ? "Sales" : "Trips"}
         </button>
       )}
-      <section className="detail-heading">
+      <section
+        className={"detail-heading" + (shared ? " public-record-heading" : "")}
+      >
         <div>
           <div className="card-tags">
-            <span className="tag trip">
-              {(j.kind === "trip" ? s.tripStages : s.salesStages)?.find(
-                (x) => x.id === j.stage,
-              )?.label || j.stage}
-            </span>
+            {!shared && (
+              <span className="tag trip">
+                {(j.kind === "trip" ? s.tripStages : s.salesStages)?.find(
+                  (x) => x.id === j.stage,
+                )?.label || j.stage}
+              </span>
+            )}
             <span className="tag neutral">{j.trip_type || "Custom trip"}</span>
             {j.lifecycle !== "active" && (
               <span className="tag lead">{j.lifecycle}</span>
@@ -193,8 +197,14 @@ export function Detail({
           </div>
           <h1>{j.name || j.client}</h1>
           <p>
-            {j.client} <span>·</span>{" "}
-            {j.kind === "lead" ? "Sales opportunity" : "Trip workspace"}
+            {j.client}
+            {!shared && (
+              <>
+                {" "}
+                <span>·</span>{" "}
+                {j.kind === "lead" ? "Sales opportunity" : "Trip workspace"}
+              </>
+            )}
           </p>
         </div>
         <div className="heading-actions">
@@ -610,7 +620,7 @@ function Notes({
       <div className="panel-heading">
         <div>
           <h2>Notes</h2>
-          <p>Named Markdown documents · simpan secara eksplisit</p>
+          <p>Catatan dan informasi perjalanan.</p>
         </div>
         <div className="row-actions">
           {edit && (
@@ -788,7 +798,7 @@ function Itinerary({ j, edit: canEdit, busy, run, dirty }: ContentProps) {
       <div className="section-toolbar">
         <div>
           <h2>{j.kind === "lead" ? "Itinerary Draft" : "Itinerary"}</h2>
-          <p>Day-stacked planning · Name & Description</p>
+          <p>Rencana kegiatan untuk setiap hari perjalanan.</p>
         </div>
         <div className="row-actions">
           {selectedItems.length > 0 && (

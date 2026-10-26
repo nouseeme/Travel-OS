@@ -18,6 +18,15 @@ colors:
   chart-accent: "#4c7866"
   chart-comparison: "#b6c5be"
 typography:
+  task-title:
+    fontFamily: "Plus Jakarta Sans, system-ui, sans-serif"
+    fontSize: "13px"
+    fontWeight: 550
+    lineHeight: 1.5
+  source-code:
+    fontFamily: "Consolas, monospace"
+    fontSize: "0.75rem"
+    lineHeight: 1.9
   headline:
     fontFamily: "Plus Jakarta Sans, system-ui, sans-serif"
     fontSize: "clamp(1.625rem, 2.1vw, 2rem)"
@@ -75,6 +84,16 @@ spacing:
   space-8: "32px"
   space-10: "40px"
 components:
+  task-item:
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.sm}"
+    padding: "12px"
+  public-panel:
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.card}"
+    padding: "24px"
   button-primary:
     backgroundColor: "{colors.action}"
     textColor: "{colors.paper}"
@@ -170,6 +189,8 @@ Warm (`warm`) and red (`red`) are semantic signals for warning/overdue and negat
 
 ## Typography
 
+The existing raw Markdown source field (`.markdown-input`) uses Consolas, monospace at 12px/1.9. This is a source-code role only; interface text continues to use Plus Jakarta Sans.
+
 **Display Font:** Plus Jakarta Sans, with system-ui and sans-serif fallbacks.
 **Body Font:** The same family, loaded locally as a variable font with weights 200–800. The CSS family resolves through `--font-jakarta` and `--font-sans`.
 
@@ -179,11 +200,13 @@ Page headings range from 26–32px. Detail headings use 28px and reduce to 24px 
 
 ## Layout
 
+Public Share Trip uses the same neutral palette in a centered 1080px shell, with 24px outer padding and a white branded header. Public content is full-width within this shell; tabs stay in one horizontal row. Phone outer padding is 12px, panel padding is 18px by 16px, and the title aligns to the panel edge. Public overview includes the published date/guest facts; internal stage identifiers and workspace-only chrome are not displayed. Shared modal forms use the common field spacing. Existing viewer/editor permissions and every sharing action remain authoritative. Script-free snapshot documents use matching neutral reading surfaces and a system font fallback.
+
 Desktop navigation floats 16px from the top, left, and bottom of the frame, at 220px wide. The main area starts at navigation width plus 32px, with a 16px right margin. At widths up to 1100px the implemented navigation width becomes 224px; at 850px it becomes the existing off-canvas drawer, sized `min(300px, 85vw)`. Desktop content is capped at 1600px. A transparent breadcrumb row precedes the title/action row and the work surface.
 
 Use the four-pixel spacing rhythm in the frontmatter, with existing local 10px, 14px, 18px, and 28px optical adjustments where needed. Panels use 24px padding, compact board cards 14px, page-heading separation 28px, and common toolbar gaps 12–20px. The board columns themselves are open canvas. Three-column boards have 20px gaps; four-column boards have 16px gaps. Cards within each column are separated by 10px.
 
-At 1100px, boards become horizontally scrollable columns and general summary strips become two columns. Record overviews stack. At 900px title/actions and authentication columns stack. At 850px the drawer replaces floating navigation and content uses 20px side padding. At 650px phone content uses 16px gutters, panels use 20px by 16px padding, cards retain 14px padding, and board columns use `min(86vw, 340px)`. Tables retain their horizontal scroller; the finance table retains a 760px minimum width below 600px.
+At 1100px, boards become horizontally scrollable columns and general summary strips become two columns. Record overviews stack. At 900px title/actions and authentication columns stack. At 850px the drawer replaces floating navigation and content uses 20px side padding. At 650px phone content uses 16px gutters, panels use 20px by 16px padding, journey cards retain 14px padding and task items use 12px, and board columns use `min(86vw, 340px)`. Tables retain their horizontal scroller; the finance table retains a 760px minimum width below 600px.
 
 Phone Home filters use two columns with the existing select spanning the row. At 380px and below, Home filters stack to one column to give native date inputs enough room; finance date labels also span the row. Notes lists stack above the editor at 650px. Record summary facts become separated rows. Cash metrics become a one-column list with figures aligned beside their labels. Preserve safe-area padding and coarse-pointer field text at 16px; coarse-pointer icon controls and board status selects have 44px targets.
 
@@ -223,7 +246,9 @@ Compact semantic context with sentence-case text. Tags use 12px text, 3px by 7px
 
 ### Cards / Containers
 
-Board cards separate content from controls with compact 14px padding and 10px corners. Context tags precede the 14px title by 8px. Descriptions use a single-line 12px preview with 1.6 leading; full content remains available through the existing open action and native title. Task warnings sit with context tags, while date and assignee share a footer row above the existing status and Edit actions. Journey facts use a 1.35:1 two-column split, a central divider, 12px top separation, and 10px vertical padding. Preserve the card-open target and independent interactive controls.
+Journey cards in Sales and Trips retain compact 14px padding, 10px corners, a 14px title and grouped date/guest facts. Their description uses a one-line 12px preview, while full content remains in the existing view.
+
+Home Tasks Overview remains a three-column Kanban. Task items use 12px padding, 8px corners, a 13px title and one-line 12px note. Show only the task, note, due date, source and status; do not add avatars, decorative tags or a separate information block. The footer keeps due/source on the left and the existing status and pencil Edit on the right. Status controls are 104px wide on desktop and 124px wide with 44px height for coarse pointers. Preserve whole-item open, drag, source navigation, permission checks and status/Edit handlers.
 
 Panels provide a shared outlined white surface. Tables use a single rounded white wrapper, horizontal scrolling, 12px headers, 13px cells, and light row dividers. General cell padding is 20px; headers use 14px by 20px. Record details use a separate title/action surface, underline tabs, and a grouped summary with fact dividers.
 
@@ -263,4 +288,4 @@ Authentication uses a framed split surface with a pale sage identity/story area 
 - **Don't** replace the implemented composition with uniformly boxed columns; keep board columns open and group the records themselves.
 - **Don't** compress native date fields below their usable track; keep the narrow-screen stacking rules.
 
-Not canonized: legacy uppercase, tracked eyebrow treatments remain in authentication/help markup and CSS. They are an inherited craft defect rather than a reusable hierarchy role; this documentation pass does not alter source. Physical phone interaction and software-keyboard behavior remain unverified by this descriptive source review.
+No new visual exception is canonized. Physical phone interaction and software-keyboard behavior remain unverified.

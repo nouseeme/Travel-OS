@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/app/styles/components.css"
+        ],
+        "createdAt": "2026-10-26T13:35:37.347Z",
+        "reason": "Agent review: the only finding is .rich-editor-content blockquote, a semantic quotation marker in the Markdown editor, not a decorative card accent."
+      }
+    ]
+  }
+}

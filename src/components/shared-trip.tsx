@@ -1,5 +1,6 @@
 "use client";
 import { SelectionTable } from "./selection-table";
+import { RefreshCw } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { Snapshot, Command } from "@/lib/model";
 import type { SharedTripData } from "@/lib/trip-sharing";
@@ -144,7 +145,7 @@ export function SharedTrip({ token }: { token: string }) {
   }
   if (!data)
     return (
-      <div className="auth-page">
+      <div className="auth-page shared-trip-unavailable">
         <CompanyIdentity logoOnly />
         <h1>{loading ? "Memuat Trip…" : "Link tidak tersedia"}</h1>
         {error && <p role="alert">{error}</p>}
@@ -183,7 +184,7 @@ export function SharedTrip({ token }: { token: string }) {
     reassignment: [],
   };
   const finance = (
-    <section className="panel spaced-panel">
+    <section className="panel spaced-panel public-finance">
       <div className="panel-heading">
         <div>
           <h2>Pengajuan transaksi</h2>
@@ -235,254 +236,264 @@ export function SharedTrip({ token }: { token: string }) {
     </section>
   );
   return (
-    <div className="shared-trip-shell">
-      <header className="shared-trip-header">
-        <CompanyIdentity logoOnly />
-        <Button
-          variant="outline"
-          disabled={loading || busy || dirty || !!editor}
-          onClick={() => void load()}
-        >
-          Refresh
-        </Button>
-      </header>
-      <main className="workspace-content">
-        {error && (
-          <div className="error-box" role="alert">
-            {error}
-          </div>
+    <div className="shared-trip-page">
+      <div className="shared-trip-shell">
+        <header className="shared-trip-header">
+          <CompanyIdentity caption="Detail perjalanan" />
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={loading || busy || dirty || !!editor}
+            onClick={() => void load()}
+          >
+            <RefreshCw size={14} /> Refresh
+          </Button>
+        </header>
+        <main className="workspace-content shared-trip-content">
+          {error && (
+            <div className="error-box" role="alert">
+              {error}
+            </div>
+          )}
+          <Detail
+            journey={j}
+            snapshot={snapshot}
+            busy={busy}
+            error={error}
+            onCommand={run}
+            onEdit={open}
+            onNavigate={() => {}}
+            onDirty={setDirty}
+            shared={{ permissions: data.permissions, finance }}
+          />
+        </main>
+        <PlatformFooter />
+        {loading ? (
+          <Toast pending message="Memuat hasil terbaru…" />
+        ) : (
+          notice && <Toast message={notice} onClose={() => setNotice("")} />
         )}
-        <Detail
-          journey={j}
-          snapshot={snapshot}
-          busy={busy}
-          error={error}
-          onCommand={run}
-          onEdit={open}
-          onNavigate={() => {}}
-          onDirty={setDirty}
-          shared={{ permissions: data.permissions, finance }}
-        />
-      </main>
-      <PlatformFooter />
-      {loading ? (
-        <Toast pending message="Memuat hasil terbaru…" />
-      ) : (
-        notice && <Toast message={notice} onClose={() => setNotice("")} />
-      )}
-      {editor && (
-        <Modal
-          title={
-            editor.kind === "task"
-              ? "Public task"
-              : editor.kind === "transaction"
-                ? "Ajukan transaksi"
-                : "Edit Trip"
-          }
-          open
-          onClose={() => {
-            if (confirm("Tutup editor? Input belum disimpan akan dibuang."))
-              setEditor(null);
-          }}
-        >
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const f = new FormData(e.currentTarget),
-                get = (k: string) => String(f.get(k) || "");
-              if (editor.kind === "task") {
-                await run({
-                  action: editor.task ? "update_task" : "create_task",
-                  id: editor.task?.id,
-                  version: editor.task?.version,
-                  data: {
-                    title: get("title"),
-                    description: get("description"),
-                    due: get("due"),
-                  },
-                });
-              } else if (editor.kind === "transaction") {
-                await run({
-                  action: "submit_transaction",
-                  data: {
-                    title: get("title"),
-                    date: get("date"),
-                    direction: get("direction"),
-                    amount: get("amount"),
-                    category: get("category"),
-                    description: get("description"),
-                    idempotency_key: key.current,
-                  },
-                });
-              } else {
-                await run({
-                  action: "update_journey",
-                  id: j.id,
-                  version: j.version,
-                  data: {
-                    name: get("name"),
-                    trip_type: get("trip_type"),
-                    start: get("start"),
-                    end: get("end"),
-                    guests: get("guests") ? Number(get("guests")) : null,
-                  },
-                });
-              }
+        {editor && (
+          <Modal
+            title={
+              editor.kind === "task"
+                ? "Public task"
+                : editor.kind === "transaction"
+                  ? "Ajukan transaksi"
+                  : "Edit Trip"
+            }
+            open
+            onClose={() => {
+              if (confirm("Tutup editor? Input belum disimpan akan dibuang."))
+                setEditor(null);
             }}
           >
-            {editor.kind === "journey" ? (
-              <>
-                <label>
-                  Nama Trip
-                  <input
-                    name="name"
-                    required
-                    maxLength={200}
-                    defaultValue={j.name}
-                  />
-                </label>
-                <label>
-                  Tipe Trip
-                  <input
-                    name="trip_type"
-                    maxLength={200}
-                    defaultValue={j.trip_type}
-                  />
-                </label>
-                <div className="form-grid">
+            <form
+              className="modal-form"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget),
+                  get = (k: string) => String(f.get(k) || "");
+                if (editor.kind === "task") {
+                  await run({
+                    action: editor.task ? "update_task" : "create_task",
+                    id: editor.task?.id,
+                    version: editor.task?.version,
+                    data: {
+                      title: get("title"),
+                      description: get("description"),
+                      due: get("due"),
+                    },
+                  });
+                } else if (editor.kind === "transaction") {
+                  await run({
+                    action: "submit_transaction",
+                    data: {
+                      title: get("title"),
+                      date: get("date"),
+                      direction: get("direction"),
+                      amount: get("amount"),
+                      category: get("category"),
+                      description: get("description"),
+                      idempotency_key: key.current,
+                    },
+                  });
+                } else {
+                  await run({
+                    action: "update_journey",
+                    id: j.id,
+                    version: j.version,
+                    data: {
+                      name: get("name"),
+                      trip_type: get("trip_type"),
+                      start: get("start"),
+                      end: get("end"),
+                      guests: get("guests") ? Number(get("guests")) : null,
+                    },
+                  });
+                }
+              }}
+            >
+              {editor.kind === "journey" ? (
+                <>
                   <label>
-                    Mulai
-                    <input type="date" name="start" defaultValue={j.start} />
-                  </label>
-                  <label>
-                    Selesai
-                    <input type="date" name="end" defaultValue={j.end} />
-                  </label>
-                  <label>
-                    Jumlah tamu
+                    Nama Trip
                     <input
-                      type="number"
-                      name="guests"
-                      min={1}
-                      max={100000}
-                      defaultValue={j.guests ?? ""}
+                      name="name"
+                      required
+                      maxLength={200}
+                      defaultValue={j.name}
                     />
                   </label>
-                </div>
-              </>
-            ) : (
-              <>
-                <label>
-                  Judul
-                  <input
-                    name="title"
-                    required
-                    maxLength={200}
-                    defaultValue={editor.task?.title}
-                  />
-                </label>
-                <label>
-                  Note
-                  <textarea
-                    name="description"
-                    maxLength={5000}
-                    defaultValue={editor.task?.description}
-                  />
-                </label>
-                {editor.kind === "task" ? (
-                  <>
-                    <p>Assignee: Public</p>
+                  <label>
+                    Tipe Trip
+                    <input
+                      name="trip_type"
+                      maxLength={200}
+                      defaultValue={j.trip_type}
+                    />
+                  </label>
+                  <div className="form-grid">
                     <label>
-                      Due date
-                      <input
-                        name="due"
-                        type="date"
-                        defaultValue={editor.task?.due}
-                      />
-                    </label>
-                  </>
-                ) : (
-                  <>
-                    <label>
-                      Tanggal
-                      <input
-                        name="date"
-                        required
-                        type="date"
-                        max={dateInZone()}
-                        defaultValue={dateInZone()}
-                      />
+                      Mulai
+                      <input type="date" name="start" defaultValue={j.start} />
                     </label>
                     <label>
-                      Arah
-                      <select
-                        name="direction"
-                        defaultValue="out"
-                        onChange={(e) => {
-                          const form = e.target.form;
-                          if (form) {
-                            const category = form.elements.namedItem(
-                              "category",
-                            ) as HTMLSelectElement;
-                            const options = Array.from(category.options);
-                            options.forEach((o) => {
-                              o.hidden = o.dataset.direction !== e.target.value;
-                            });
-                            category.value =
-                              options.find((o) => !o.hidden)?.value || "";
+                      Selesai
+                      <input type="date" name="end" defaultValue={j.end} />
+                    </label>
+                    <label>
+                      Jumlah tamu
+                      <input
+                        type="number"
+                        name="guests"
+                        min={1}
+                        max={100000}
+                        defaultValue={j.guests ?? ""}
+                      />
+                    </label>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <label>
+                    Judul
+                    <input
+                      name="title"
+                      required
+                      maxLength={200}
+                      defaultValue={editor.task?.title}
+                    />
+                  </label>
+                  <label>
+                    Note
+                    <textarea
+                      name="description"
+                      maxLength={5000}
+                      defaultValue={editor.task?.description}
+                    />
+                  </label>
+                  {editor.kind === "task" ? (
+                    <>
+                      <p>Assignee: Public</p>
+                      <label>
+                        Due date
+                        <input
+                          name="due"
+                          type="date"
+                          defaultValue={editor.task?.due}
+                        />
+                      </label>
+                    </>
+                  ) : (
+                    <>
+                      <label>
+                        Tanggal
+                        <input
+                          name="date"
+                          required
+                          type="date"
+                          max={dateInZone()}
+                          defaultValue={dateInZone()}
+                        />
+                      </label>
+                      <label>
+                        Arah
+                        <select
+                          name="direction"
+                          defaultValue="out"
+                          onChange={(e) => {
+                            const form = e.target.form;
+                            if (form) {
+                              const category = form.elements.namedItem(
+                                "category",
+                              ) as HTMLSelectElement;
+                              const options = Array.from(category.options);
+                              options.forEach((o) => {
+                                o.hidden =
+                                  o.dataset.direction !== e.target.value;
+                              });
+                              category.value =
+                                options.find((o) => !o.hidden)?.value || "";
+                            }
+                          }}
+                        >
+                          <option value="out">Expense / Payments</option>
+                          <option value="in">Income / Receipts</option>
+                        </select>
+                      </label>
+                      <label>
+                        Kategori
+                        <select
+                          name="category"
+                          required
+                          defaultValue={
+                            data.categories.find((c) => c.direction === "out")
+                              ?.id
                           }
-                        }}
-                      >
-                        <option value="out">Expense / Payments</option>
-                        <option value="in">Income / Receipts</option>
-                      </select>
-                    </label>
-                    <label>
-                      Kategori
-                      <select
-                        name="category"
-                        required
-                        defaultValue={
-                          data.categories.find((c) => c.direction === "out")?.id
-                        }
-                      >
-                        {data.categories.map((c) => (
-                          <option
-                            value={c.id}
-                            key={c.id}
-                            data-direction={c.direction}
-                            hidden={c.direction !== "out"}
-                          >
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      Nominal IDR
-                      <MoneyInput name="amount" label="Nominal IDR" required />
-                    </label>
-                  </>
-                )}
-              </>
-            )}
-            {error && (
-              <p className="error-box" role="alert">
-                {error}
-              </p>
-            )}
-            <div className="form-actions">
-              <Button type="submit" disabled={busy}>
-                {busy
-                  ? "Menyimpan…"
-                  : editor.kind === "transaction"
-                    ? "Ajukan untuk approval"
-                    : "Simpan"}
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
+                        >
+                          {data.categories.map((c) => (
+                            <option
+                              value={c.id}
+                              key={c.id}
+                              data-direction={c.direction}
+                              hidden={c.direction !== "out"}
+                            >
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Nominal IDR
+                        <MoneyInput
+                          name="amount"
+                          label="Nominal IDR"
+                          required
+                        />
+                      </label>
+                    </>
+                  )}
+                </>
+              )}
+              {error && (
+                <p className="error-box" role="alert">
+                  {error}
+                </p>
+              )}
+              <div className="form-actions">
+                <Button type="submit" disabled={busy}>
+                  {busy
+                    ? "Menyimpan…"
+                    : editor.kind === "transaction"
+                      ? "Ajukan untuk approval"
+                      : "Simpan"}
+                </Button>
+              </div>
+            </form>
+          </Modal>
+        )}
+      </div>
     </div>
   );
 }

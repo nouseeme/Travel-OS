@@ -584,10 +584,14 @@
     margin-bottom: 24px;
   }
   .shared-trip-header {
-    padding: 16px;
+    padding: 12px 14px;
+    margin-bottom: 20px;
+    gap: 12px;
+    border-radius: 10px;
   }
   .shared-trip-shell {
     border-inline: 0;
+    min-height: calc(100dvh - 28px);
   }
   .stat-label {
     font-size: 12px;
@@ -711,6 +715,99 @@
   }
   .notes-panel .panel-heading {
     margin-bottom: 12px;
+  }
+  .shared-trip-page {
+    padding: 12px;
+    padding-top: max(12px, env(safe-area-inset-top, 0px));
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+  .shared-trip-header .company-identity img {
+    width: 34px;
+    height: 34px;
+  }
+  .shared-trip-header .company-identity b {
+    font-size: 13px;
+  }
+  .shared-trip-header .button {
+    min-height: 40px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .shared-trip-shell .workspace-content {
+    padding: 0;
+  }
+  .shared-trip-shell .public-record-heading {
+    padding: 0 4px 20px;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .public-record-heading h1 {
+    font-size: 1.5rem;
+    line-height: 1.35;
+  }
+  .public-record-heading p {
+    font-size: 13px;
+  }
+  .shared-trip-shell .detail-tabs {
+    padding: 4px;
+    gap: 4px;
+    margin: 0 0 20px;
+    border-radius: 8px;
+  }
+  .shared-trip-shell .detail-tabs button {
+    padding: 9px 12px;
+    min-height: 42px;
+  }
+  .shared-trip-shell .panel {
+    padding: 18px 16px;
+    border-radius: 10px;
+  }
+  .shared-trip-shell .panel-heading {
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .shared-trip-shell .record-summary .facts-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .shared-trip-shell .record-summary .facts-grid > div + div {
+    padding-top: 16px;
+    padding-left: 0;
+    border-left: 0;
+  }
+  .shared-trip-shell .panel.itinerary-day {
+    padding: 0;
+  }
+  .shared-trip-shell .day-heading {
+    padding: 14px 16px;
+  }
+  .shared-trip-shell .itinerary-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 16px;
+  }
+  .shared-trip-shell .item-name {
+    font-size: 13px;
+    font-weight: 550;
+  }
+  .shared-trip-shell .plain-note {
+    font-size: 13px;
+    line-height: 1.8;
+  }
+  .shared-trip-shell .task-row {
+    grid-template-columns: 18px minmax(0, 1fr);
+    padding: 12px 0;
+  }
+  .shared-trip-shell .notes-panel .note-body {
+    padding: 0;
+  }
+  .shared-trip-shell > .platform-footer {
+    padding: 20px 4px 0;
+  }
+  .shared-trip-unavailable {
+    margin: 24px 12px;
+    padding: 24px;
   }
 }
 @media (max-width: 640px) {
