@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { Snapshot } from "@/lib/model";
 import { validateContent, money } from "@/lib/domain";
 import { parseFilters } from "@/lib/filters";
+import { readNoteDocument } from "@/lib/note-document";
 import { validTimezone } from "@/lib/time";
 export const dynamic = "force-dynamic";
 const commandSchema = z.object({
@@ -153,6 +154,13 @@ export async function POST(request: Request) {
       }).parse(command.data);
     if (["create_transaction", "edit_transaction"].includes(command.action))
       money(command.data?.amount);
+    if (["create_doc", "update_doc"].includes(command.action))
+      readNoteDocument(command.data!.body as string);
+    if (
+      command.action === "save_template" &&
+      typeof command.data?.content === "string"
+    )
+      readNoteDocument(command.data.content);
     if (command.action === "save_budget") money(command.data?.amount, false);
     if (
       command.data &&

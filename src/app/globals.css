@@ -1,5 +1,7 @@
 /* Canonical style entry. Edit the owning stylesheet, never append patch layers. */
+@layer theme, base, editor, components, utilities;
 @import "tailwindcss";
+@import "@blocknote/ariakit/style.css" layer(editor);
 @import "./styles/foundation.css" layer(base);
 @import "./styles/components.css" layer(components);
 @import "./styles/responsive.css" layer(components);

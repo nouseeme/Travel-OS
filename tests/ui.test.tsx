@@ -47,6 +47,7 @@ for (const name of [
   });
 const { render, fireEvent, cleanup, waitFor, act } =
   await import("@testing-library/react");
+const { StrictMode, useState } = await import("react");
 const { Detail } = await import("../src/components/detail");
 const { default: RichEditorClient } =
   await import("../src/components/rich-editor-client");
@@ -805,7 +806,7 @@ test("Sales tab switching protects unsaved notes and saves them explicitly", asy
     fireEvent.click(ui.getByRole("button", { name: "Notes" }));
     const noteEditor = await ui.findByRole(
       "textbox",
-      { name: "Markdown note" },
+      { name: "Isi note" },
       { timeout: 10000 },
     );
     await act(async () => {
@@ -814,15 +815,18 @@ test("Sales tab switching protects unsaved notes and saves them explicitly", asy
     });
     await waitFor(() => assert.equal(isDirty, true));
     fireEvent.click(ui.getByRole("button", { name: "Contacts" }));
-    assert.ok(ui.getByRole("textbox", { name: "Markdown note" }));
+    assert.ok(ui.getByRole("textbox", { name: "Isi note" }));
     assert.equal(ui.queryByRole("button", { name: "Simpan contacts" }), null);
     fireEvent.click(ui.getByRole("button", { name: "Simpan notes" }));
     await waitFor(() => assert.ok(command));
     assert.equal(command!.action, "content");
-    assert.equal(
+    const { readNoteDocument, noteDocumentHtml } =
+      await import("../src/lib/note-document");
+    const stored = readNoteDocument(
       (command!.data!.notes as Journey["notes"])[0].body,
-      "Unsaved new note",
     );
+    assert.ok(stored);
+    assert.equal(noteDocumentHtml(stored), "<p>Unsaved new note</p>");
     assert.equal(isDirty, true);
   } finally {
     cleanup();
@@ -928,32 +932,16 @@ test("cash filter responses cannot overwrite a newer period", async () => {
     globalThis.fetch = original;
   }
 });
-test("protected Markdown rendering blocks script markup and executable links", () => {
-  const dangerous: Journey = {
-    ...journey,
-    notes: [
-      {
-        id: randomUUID(),
-        title: "Unsafe test",
-        body: "<script>alert(1)</script>\n\n[Bad link](javascript:alert%281%29)\n\n[Safe](https://example.test)",
-      },
-    ],
-  };
+test("protected Markdown rendering blocks script markup and executable links", async () => {
+  const { Markdown } = await import("../src/components/markdown");
   const ui = render(
-    <Detail
-      journey={dangerous}
-      snapshot={snapshot}
-      busy={false}
-      error=""
-      onCommand={async () => false}
-      onEdit={() => {}}
-      onNavigate={() => {}}
-      onDirty={() => {}}
+    <Markdown
+      body={
+        "<script>alert(1)</script>\n\n[Bad link](javascript:alert%281%29)\n\n[Safe](https://example.test)"
+      }
     />,
   );
   try {
-    fireEvent.click(ui.getByRole("button", { name: "Notes" }));
-    assert.ok(ui.getByRole("alert"));
     assert.equal(ui.container.querySelector("script"), null);
     assert.equal(ui.container.querySelector('a[href^="javascript:"]'), null);
     assert.equal(
@@ -964,54 +952,6 @@ test("protected Markdown rendering blocks script markup and executable links", (
     cleanup();
   }
 });
-test("table row button works on notes with cell line breaks and respects disabled state", async () => {
-  const raf = globalThis.requestAnimationFrame;
-  globalThis.requestAnimationFrame = dom.window.requestAnimationFrame.bind(
-    dom.window,
-  );
-  let saved = "";
-  const value = "| Nama | Harga |\n| --- | --- |\n| Satu<br>Dua | 20 |";
-  const { unsupportedMarkdown } = await import("../src/lib/editor-content");
-  const { Markdown } = await import("../src/components/markdown");
-  const ui = render(
-    <RichEditorClient
-      value={value}
-      label="Table note"
-      onChange={(v) => {
-        saved = v;
-      }}
-    />,
-  );
-  try {
-    const field = await ui.findByRole("textbox", { name: "Table note" });
-    const count = field.querySelectorAll("tr").length;
-    fireEvent.click(ui.getByRole("button", { name: "Tambah baris tabel" }));
-    assert.equal(field.querySelectorAll("tr").length, count + 1);
-    assert.equal(unsupportedMarkdown(saved), false);
-    ui.rerender(
-      <RichEditorClient
-        value={saved}
-        label="Table note"
-        onChange={() => {}}
-        disabled
-      />,
-    );
-    assert.equal(
-      (
-        ui.getByRole("button", {
-          name: "Tambah baris tabel",
-        }) as HTMLButtonElement
-      ).disabled,
-      true,
-    );
-    ui.rerender(<Markdown body={value} />);
-    assert.equal(ui.container.querySelector("td")?.innerHTML, "Satu<br>\nDua");
-  } finally {
-    cleanup();
-    globalThis.requestAnimationFrame = raf;
-  }
-});
-
 test("WYSIWYG replaces external template content without dirty events and disables editing during save", async () => {
   let changes = 0;
   const onChange = () => changes++;
@@ -1038,13 +978,61 @@ test("WYSIWYG replaces external template content without dirty events and disabl
     await waitFor(() =>
       assert.equal(field.querySelector("h3")?.textContent, "Replaced"),
     );
-    assert.equal(field.querySelector("li")?.textContent, "New item");
+    assert.ok(field.textContent?.includes("New item"));
     assert.equal(field.getAttribute("contenteditable"), "false");
-    assert.equal(
-      (ui.getByRole("button", { name: "Bold" }) as HTMLButtonElement).disabled,
-      true,
-    );
+    assert.equal(ui.queryByRole("button", { name: "Bold" }), null);
     assert.equal(changes, 0);
+  } finally {
+    cleanup();
+  }
+});
+test("controlled editor keeps its initial AI table through StrictMode initialization and remount", async () => {
+  let changes = 0;
+  function Draft() {
+    const [body, setBody] = useState(
+      "## Draft\n\n| Kota | Tamu |\n| --- | --- |\n| Istanbul | 12 |",
+    );
+    const [revision, setRevision] = useState(0);
+    return (
+      <>
+        <RichEditorClient
+          key={revision}
+          value={body}
+          label="AI draft"
+          onChange={(next) => {
+            changes++;
+            setBody(next);
+          }}
+        />
+        <button onClick={() => setRevision((v) => v + 1)}>Reopen draft</button>
+      </>
+    );
+  }
+  const ui = render(
+    <StrictMode>
+      <Draft />
+    </StrictMode>,
+  );
+  try {
+    await waitFor(() =>
+      assert.equal(
+        ui.getByRole("textbox", { name: "AI draft" }).querySelectorAll("tr")
+          .length,
+        2,
+      ),
+    );
+    fireEvent.click(ui.getByRole("button", { name: "Reopen draft" }));
+    await waitFor(() =>
+      assert.match(
+        ui.getByRole("textbox", { name: "AI draft" }).textContent || "",
+        /Istanbul/,
+      ),
+    );
+    assert.equal(
+      changes,
+      0,
+      "Mounting an editor must never overwrite the controlled draft",
+    );
   } finally {
     cleanup();
   }

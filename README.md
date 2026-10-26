@@ -144,6 +144,10 @@ Open [http://127.0.0.1:3000](http://127.0.0.1:3000) and sign in. Hosting uses `n
 
 ## Verification and remaining scope
 
+Notes and document templates use a minimal BlockNote editor. Type `/table` to insert a table, use the table's `+` controls to add rows/columns, and select text for formatting. Pasted plain Markdown and rich HTML retain supported tables, code, links, headings, and lists. Documents are stored as versioned BlockNote JSON in the existing text fields; read-only and shared views render without loading the editor.
+
+When releasing this editor, deploy the new renderer **before** converting existing note/document templates. `npm run templates:convert` previews the conversion and writes an original-content backup under ignored `.local/`. After verifying the deployment, run `npm run templates:convert -- --apply --new-renderer-deployed`. The converter skips converted templates and checks their versions before updating. Itinerary templates are unaffected. The server secret remains local.
+
 ```bash
 npm run typecheck
 npm test

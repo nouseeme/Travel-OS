@@ -8,6 +8,7 @@ import { can, shortDate } from "@/lib/format";
 import { Button } from "./ui/button";
 import { RichEditor } from "./rich-editor";
 import { Markdown } from "./markdown";
+import { readNoteDocument, noteDocumentHtml } from "@/lib/note-document";
 import { Modal } from "./ui/dialog";
 import { DocSharing } from "./doc-sharing";
 import { ClickableRow } from "./clickable-row";
@@ -231,7 +232,31 @@ export function InternalDocs({
           <Button
             variant="outline"
             onClick={async () => {
-              await navigator.clipboard.writeText(body);
+              const note = readNoteDocument(body);
+              if (!note) {
+                await navigator.clipboard.writeText(body);
+                return;
+              }
+              const html = noteDocumentHtml(note);
+              const parsed = new DOMParser().parseFromString(html, "text/html");
+              parsed
+                .querySelectorAll("th,td")
+                .forEach((cell) => cell.append("\t"));
+              parsed
+                .querySelectorAll("p,h1,h2,h3,h4,h5,h6,pre,li,tr,blockquote")
+                .forEach((block) => block.append("\n"));
+              parsed
+                .querySelectorAll("br")
+                .forEach((br) => br.replaceWith("\n"));
+              const text = parsed.body.textContent || "";
+              if (typeof ClipboardItem !== "undefined") {
+                await navigator.clipboard.write([
+                  new ClipboardItem({
+                    "text/html": new Blob([html], { type: "text/html" }),
+                    "text/plain": new Blob([text], { type: "text/plain" }),
+                  }),
+                ]);
+              } else await navigator.clipboard.writeText(text);
             }}
           >
             Copy changes

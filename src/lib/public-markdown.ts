@@ -5,6 +5,7 @@ import remarkRehype from "remark-rehype";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
 import { tableCellBreaks } from "./table-cell-breaks";
+import { readNoteDocument, noteDocumentHtml } from "./note-document";
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm)
@@ -20,5 +21,7 @@ const processor = unified()
   })
   .use(rehypeStringify);
 export function publicMarkdown(body: string) {
+  const document = readNoteDocument(body);
+  if (document) return noteDocumentHtml(document);
   return String(processor.processSync(body));
 }

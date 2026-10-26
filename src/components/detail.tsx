@@ -696,7 +696,7 @@ function Notes({
               ) : (
                 <RichEditor
                   key={note.id}
-                  label="Markdown note"
+                  label="Isi note"
                   disabled={busy}
                   value={note.body}
                   onChange={(body) =>

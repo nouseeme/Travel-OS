@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { readNoteDocument } from "./note-document";
 import { minorUnits, decimalString, formatIDR, MAX_IDR } from "./money";
 import {
   type Person,
@@ -91,7 +92,17 @@ const notesSchema = z
     z.object({
       id,
       title: z.string().trim().min(1).max(120),
-      body: z.string().max(50000),
+      body: z
+        .string()
+        .max(50000)
+        .refine((value) => {
+          try {
+            readNoteDocument(value);
+            return true;
+          } catch {
+            return false;
+          }
+        }, "Format dokumen notes tidak valid."),
     }),
   )
   .max(30);

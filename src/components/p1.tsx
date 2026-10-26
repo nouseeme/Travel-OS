@@ -854,7 +854,7 @@ export function Configuration({
           {kind !== "itinerary" ? (
             <>
               <RichEditor
-                label="Markdown template"
+                label="Isi template"
                 disabled={busy}
                 value={content}
                 onChange={setContent}
