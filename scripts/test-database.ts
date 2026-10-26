@@ -2692,6 +2692,65 @@ await test("contact reset removes old live and snapshot data, links every journe
     1,
   );
 });
+await test("trip board sorting and combined filters apply before pagination", async () => {
+  await asUser(admin);
+  const stage = (await snapshot("trips")).tripStages.find(
+    (s: any) => s.active && s.semantic === "open",
+  ).id;
+  const ids: string[] = [];
+  for (let i = 0; i < 55; i++) {
+    ids.push(
+      await cmd("create_journey", {
+        kind: "trip",
+        name: `Sort fixture ${String(i).padStart(2, "0")}`,
+        client: "Trip sorting fixture",
+        pic: admin,
+        people: [admin],
+        stage,
+        start: `2100-${String(1 + Math.floor(i / 28)).padStart(2, "0")}-${String(1 + (i % 28)).padStart(2, "0")}`,
+        end: `2100-${String(1 + Math.floor(i / 28)).padStart(2, "0")}-${String(1 + (i % 28)).padStart(2, "0")}`,
+        guests: 2,
+        quote: "100",
+      }),
+    );
+  }
+  const f = { search: "Trip sorting fixture" };
+  let s = await snapshot("trips", f);
+  assert.equal(s.count, 55);
+  assert.equal(s.journeys.length, 50);
+  assert.equal(s.journeys[0].id, ids[0]);
+  assert.equal(s.journeys[49].id, ids[49]);
+  s = await snapshot("trips", { ...f, page: "1" });
+  assert.deepEqual(
+    s.journeys.map((j: any) => j.id),
+    ids.slice(50),
+  );
+  for (const trip_sort of ["latest", "name_desc"]) {
+    s = await snapshot("trips", { ...f, trip_sort });
+    assert.equal(s.journeys[0].id, ids[54]);
+  }
+  s = await snapshot("trips", { ...f, trip_sort: "name_asc" });
+  assert.equal(s.journeys[0].id, ids[0]);
+  s = await snapshot("trips", {
+    ...f,
+    trip_stage: stage,
+    departure_from: "2100-01-01",
+    departure_to: "2100-01-01",
+    pic: admin,
+  });
+  assert.equal(s.count, 1);
+  assert.equal(s.journeys[0].id, ids[0]);
+  s = await snapshot("trips", { ...f, trip_stage: "missing-stage" });
+  assert.equal(s.count, 0);
+  assert.deepEqual(s.journeys, []);
+  // List filters never make an authorized record disappear when opened directly.
+  s = await snapshot(
+    "trips",
+    { trip_stage: "missing-stage", departure_from: "2200-01-01" },
+    ids[0],
+  );
+  assert.equal(s.journeys[0].id, ids[0]);
+});
 console.log(
   `Database regression: ${passed} scenarios passed (embedded PostgreSQL; hosted Auth/email/concurrency remain separate gates).`,
 );

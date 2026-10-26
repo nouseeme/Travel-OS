@@ -139,6 +139,14 @@ export function Dashboard() {
         ...Object.fromEntries(
           Object.entries({
             ...filters,
+            ...(!(view === "trips" && !archive && journeyTab === "board")
+              ? {
+                  trip_sort: undefined,
+                  trip_stage: undefined,
+                  departure_from: undefined,
+                  departure_to: undefined,
+                }
+              : {}),
             ...(archive ? { lifecycle: "archive" } : {}),
           }).filter(([, v]) => v !== undefined && v !== ""),
         ),
@@ -175,7 +183,15 @@ export function Dashboard() {
         setLoading(false);
       }
     }
-  }, [view, recordId, JSON.stringify(filters), archive, auth, router]);
+  }, [
+    view,
+    recordId,
+    JSON.stringify(filters),
+    archive,
+    auth,
+    router,
+    journeyTab,
+  ]);
   useEffect(() => {
     void fetchState();
     return () => {
@@ -1000,6 +1016,79 @@ export function Dashboard() {
                                 </option>
                               ))}
                             </select>
+                            {view === "trips" &&
+                              !archive &&
+                              journeyTab === "board" && (
+                                <>
+                                  <label>
+                                    Urutkan
+                                    <select
+                                      aria-label="Urutkan trip"
+                                      value={filters.trip_sort || "nearest"}
+                                      onChange={(e) =>
+                                        filter("trip_sort", e.target.value)
+                                      }
+                                    >
+                                      <option value="nearest">
+                                        Keberangkatan terdekat
+                                      </option>
+                                      <option value="latest">
+                                        Keberangkatan terjauh
+                                      </option>
+                                      <option value="name_asc">Nama A–Z</option>
+                                      <option value="name_desc">
+                                        Nama Z–A
+                                      </option>
+                                    </select>
+                                  </label>
+                                  <label>
+                                    Tahap
+                                    <select
+                                      aria-label="Filter tahap trip"
+                                      value={filters.trip_stage || ""}
+                                      onChange={(e) =>
+                                        filter("trip_stage", e.target.value)
+                                      }
+                                    >
+                                      <option value="">Semua tahap</option>
+                                      {(
+                                        s.tripStages?.filter(
+                                          (x) =>
+                                            x.active && x.semantic === "open",
+                                        ) ||
+                                        tripStages.map((id) => ({
+                                          id,
+                                          label: id,
+                                        }))
+                                      ).map((stage) => (
+                                        <option key={stage.id} value={stage.id}>
+                                          {stage.label}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                  <label>
+                                    Berangkat dari
+                                    <input
+                                      type="date"
+                                      value={filters.departure_from || ""}
+                                      onChange={(e) =>
+                                        filter("departure_from", e.target.value)
+                                      }
+                                    />
+                                  </label>
+                                  <label>
+                                    Sampai
+                                    <input
+                                      type="date"
+                                      value={filters.departure_to || ""}
+                                      onChange={(e) =>
+                                        filter("departure_to", e.target.value)
+                                      }
+                                    />
+                                  </label>
+                                </>
+                              )}
                           </div>
                         </div>
                         {archive ? (
@@ -1113,7 +1202,17 @@ export function Dashboard() {
                                     ?.filter(
                                       (x) => x.active && x.semantic === "open",
                                     )
-                                    .map((x) => x.id) || tripStages
+                                    .map((x) => x.id)
+                                    .filter(
+                                      (id) =>
+                                        !filters.trip_stage ||
+                                        id === filters.trip_stage,
+                                    ) ||
+                                  tripStages.filter(
+                                    (id) =>
+                                      !filters.trip_stage ||
+                                      id === filters.trip_stage,
+                                  )
                             }
                             labels={Object.fromEntries(
                               (view === "sales"

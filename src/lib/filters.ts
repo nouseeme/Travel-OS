@@ -2,6 +2,10 @@ import { z } from "zod";
 import { date, AppError } from "./domain";
 import { validTimezone } from "./time";
 export const filterSchema = z.object({
+  trip_sort: z.enum(["nearest", "latest", "name_asc", "name_desc"]).optional(),
+  trip_stage: z.string().max(100).optional(),
+  departure_from: z.string().optional(),
+  departure_to: z.string().optional(),
   sort: z.enum(["title", "date", "creator", "category"]).optional(),
   order: z.enum(["asc", "desc"]).optional(),
   title: z.string().max(200).optional(),
@@ -44,6 +48,10 @@ export function parseFilters(raw: unknown) {
   date(f.from, false);
   date(f.to, false);
   date(f.anchor, false);
+  date(f.departure_from, false);
+  date(f.departure_to, false);
+  if (f.departure_from && f.departure_to && f.departure_from > f.departure_to)
+    throw new AppError("Tanggal keberangkatan mulai harus ≤ tanggal selesai.");
   if (f.from && f.to && f.from > f.to)
     throw new AppError("Tanggal filter mulai harus ≤ tanggal selesai.");
   if (f.page && Number(f.page) > 10000)

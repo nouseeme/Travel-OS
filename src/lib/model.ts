@@ -152,6 +152,10 @@ export interface State {
   timezone: string;
 }
 export interface Filters {
+  trip_sort?: "nearest" | "latest" | "name_asc" | "name_desc";
+  trip_stage?: string;
+  departure_from?: string;
+  departure_to?: string;
   sort?: "title" | "date" | "creator" | "category";
   order?: "asc" | "desc";
   title?: string;
