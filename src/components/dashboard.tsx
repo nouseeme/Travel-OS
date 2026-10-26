@@ -365,7 +365,7 @@ export function Dashboard() {
         <div className="workspace-picker">
           <CompanyIdentity />
         </div>
-        <span className="nav-label">WORKSPACE</span>
+        <span className="nav-label">Workspace</span>
         <nav>
           {[
             { id: "home", label: "Home", icon: LayoutGrid },
@@ -394,7 +394,7 @@ export function Dashboard() {
         </nav>
         {s && s.user.role === "admin" && (
           <>
-            <span className="nav-label">TEAM & SETTINGS</span>
+            <span className="nav-label">Team & settings</span>
             <nav>
               {s.user.role === "admin" && (
                 <button
@@ -551,7 +551,13 @@ export function Dashboard() {
             </button>
           </div>
         </header>
-        <main id="workspace-main" tabIndex={-1} className="workspace-content">
+        <main
+          id="workspace-main"
+          tabIndex={-1}
+          className="workspace-content"
+          data-view={view}
+          data-record={recordId ? "true" : undefined}
+        >
           {settingsDenied && (
             <Empty text="Team & Settings hanya tersedia untuk admin." />
           )}
@@ -615,17 +621,6 @@ export function Dashboard() {
                   <>
                     <section className="page-heading">
                       <div>
-                        <div className="eyebrow">
-                          {view === "home"
-                            ? "YOUR DAILY COMPASS"
-                            : view === "sales"
-                              ? "FROM CONVERSATION TO OPPORTUNITY"
-                              : view === "trips"
-                                ? "GOOD JOURNEYS, WELL PLANNED"
-                                : view === "finance"
-                                  ? "EVERY RUPIAH, ACCOUNTED FOR"
-                                  : "A SMALL TEAM, SHARED DIRECTION"}
-                        </div>
                         <h1>
                           {view === "home"
                             ? `Selamat ${Number(new Intl.DateTimeFormat("en", { timeZone: s.timezone, hour: "numeric", hour12: false }).format(new Date())) < 12 ? "pagi" : "datang"}, ${s.user.name.split(" ")[0]}.`
@@ -634,18 +629,18 @@ export function Dashboard() {
                                 ? "Trip archive"
                                 : "Lead archive"
                               : view === "sales"
-                                ? "Percakapan jadi perjalanan."
+                                ? "Sales CRM"
                                 : view === "trips"
-                                  ? "Rencanakan setiap perjalanan."
+                                  ? "Trips"
                                   : view === "finance"
-                                    ? "Pencatatan kas, jelas."
+                                    ? "Finance"
                                     : view === "configuration"
-                                      ? "Atur ruang kerja Anda."
+                                      ? "Configuration"
                                       : view === "audit"
-                                        ? "Jejak perubahan tim."
+                                        ? "Audit history"
                                         : view === "docs"
-                                          ? "Catatan dan pengetahuan tim."
-                                          : "Tim Anda, terhubung."}
+                                          ? "Internal"
+                                          : "People"}
                         </h1>
                         <p>
                           {view === "home"
@@ -1579,7 +1574,10 @@ export function Dashboard() {
         </main>
         <footer className="app-footer">
           <PlatformCredit />
-          <a href="/help" style={{display: "flex", alignItems: "center", gap: "4px"}}>
+          <a
+            href="/help"
+            style={{ display: "flex", alignItems: "center", gap: "4px" }}
+          >
             <CircleHelp size={12} />
             Bantuan penggunaan
           </a>
@@ -1630,12 +1628,14 @@ function Stat({
 }) {
   return (
     <article className={"stat-card " + (warn ? "warm" : "")}>
-      <div>
-        <span>{label}</span>
-        <Icon size={17} />
-      </div>
       <strong>{value}</strong>
-      <small>{text}</small>
+      <div className="stat-copy">
+        <span className="stat-label">
+          <Icon size={15} aria-hidden="true" />
+          {label}
+        </span>
+        <small>{text}</small>
+      </div>
     </article>
   );
 }

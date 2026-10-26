@@ -118,3 +118,8 @@
     scroll-behavior: auto !important;
   }
 }
+:where(.button, .icon-button, .round-button, .sidebar nav button):active:not(
+    :disabled
+  ) {
+  opacity: 0.8;
+}

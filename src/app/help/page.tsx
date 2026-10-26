@@ -13,7 +13,6 @@ export default async function HelpPage() {
     <HelpFrame>
       <main>
         <div className="help-hero">
-          <p className="help-eyebrow">PUSAT BANTUAN</p>
           <h1>Mau cari panduan apa?</h1>
           <p>
             Mulai dari modul yang sedang kamu pakai. Kita bahas cara kerjanya

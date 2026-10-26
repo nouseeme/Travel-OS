@@ -16,6 +16,7 @@ import {
   CalendarDays,
   Users,
   MapPin,
+  Pencil,
 } from "lucide-react";
 import type { Task, Journey, Snapshot, Command } from "@/lib/model";
 import { can, deadline, shortDate, initials } from "@/lib/format";
@@ -50,12 +51,14 @@ export function Column({
   );
 }
 function DragCard({
+  className = "",
   id,
   disabled,
   onOpen,
   label,
   children,
 }: {
+  className?: string;
   id: string;
   disabled?: boolean;
   onOpen: () => void;
@@ -67,7 +70,9 @@ function DragCard({
   return (
     <article
       ref={setNodeRef}
-      className={"board-card " + (isDragging ? "dragging" : "")}
+      className={
+        "board-card " + className + " " + (isDragging ? "dragging" : "")
+      }
       style={
         transform
           ? {
@@ -135,10 +140,6 @@ export function Board({
   function task(t: Task) {
     const parent = s.journeys.find((j) => j.id === t.parent);
     const warning = deadline(t, s.today);
-    const person =
-      t.assignee === "public"
-        ? { name: "Public" }
-        : s.people.find((p) => p.id === t.assignee);
     const editable =
       t.context === "internal"
         ? s.user.id === t.assignee
@@ -155,81 +156,84 @@ export function Board({
     return (
       <DragCard
         id={t.id}
+        className="task-item"
         disabled={!statusEditable}
         key={t.id}
         label={`Buka ${t.title}`}
         onOpen={openTask}
       >
-        <div className="card-tags">
-          <span className={"tag " + t.context}>
-            {t.context === "internal"
-              ? "Internal"
-              : t.context === "lead"
-                ? "Sales lead"
-                : "Trip"}
-          </span>
-          {parent?.lifecycle !== "active" && parent?.lifecycle && (
-            <span className="tag neutral">Archived</span>
-          )}
-        </div>
         <button className="card-title" onClick={openTask}>
           {t.title}
         </button>
-        {parent && (
-          <button
-            className="parent-link"
-            onClick={() =>
-              onNavigate(
-                `/${parent.kind === "lead" ? "sales" : "trips"}/${parent.id}`,
-              )
-            }
-          >
-            {parent.name || parent.client}
-            <ArrowUpRight size={12} />
-          </button>
+        {t.description && (
+          <p className="card-description" title={t.description}>
+            {t.description}
+          </p>
         )}
-        {t.description && <p className="card-description">{t.description}</p>}
-        <div className="card-due">
-          <CalendarDays size={13} />
-          {shortDate(t.due)}
-          {warning && (
+        <footer>
+          <div className="task-item-meta">
             <span
               className={
-                "due-badge " + (warning === "Overdue" ? "overdue" : "soon")
+                "task-item-due " +
+                (warning === "Overdue"
+                  ? "negative"
+                  : warning
+                    ? "task-due-soon"
+                    : "")
+              }
+              title={warning || undefined}
+            >
+              <CalendarDays size={12} />
+              {shortDate(t.due)}
+            </span>
+            {parent ? (
+              <button
+                className="parent-link"
+                onClick={() =>
+                  onNavigate(
+                    `/${parent.kind === "lead" ? "sales" : "trips"}/${parent.id}`,
+                  )
+                }
+                title={parent.name || parent.client}
+              >
+                <span>{parent.name || parent.client}</span>
+                <ArrowUpRight size={11} />
+              </button>
+            ) : (
+              <span className="task-item-source">Internal</span>
+            )}
+          </div>
+          <div className="task-item-actions">
+            <select
+              aria-label={`Status ${t.title}`}
+              value={t.status}
+              disabled={!statusEditable}
+              onChange={(e) =>
+                onCommand({
+                  action: "task_status",
+                  id: t.id,
+                  version: t.version,
+                  data: { status: e.target.value },
+                })
               }
             >
-              {warning}
-            </span>
-          )}
-        </div>
-        <footer>
-          <span className="avatar mini" title={person?.name}>
-            {initials(person?.name || "?")}
-          </span>
-          <select
-            aria-label={`Status ${t.title}`}
-            value={t.status}
-            disabled={!statusEditable}
-            onChange={(e) =>
-              onCommand({
-                action: "task_status",
-                id: t.id,
-                version: t.version,
-                data: { status: e.target.value },
-              })
-            }
-          >
-            {columns.map((x) => (
-              <option key={x} value={x}>
-                {labels[x] || x}
-              </option>
-            ))}
-          </select>
-          {editable && (
-            <button className="text-button tiny" onClick={() => onEdit(t)}>
-              Edit
-            </button>
-          )}
+              {columns.map((x) => (
+                <option key={x} value={x}>
+                  {labels[x] || x}
+                </option>
+              ))}
+            </select>
+            {editable && (
+              <button
+                className="task-item-edit"
+                aria-label={`Edit ${t.title}`}
+                title="Edit task"
+                onClick={() => onEdit(t)}
+              >
+                <Pencil size={13} />
+              </button>
+            )}
+          </div>
         </footer>
       </DragCard>
     );
@@ -266,19 +270,25 @@ export function Board({
         >
           {j.name || j.client}
         </button>
-        <p className="card-description">{j.client}</p>
-        <div className="journey-meta">
+        <p className="card-company">{j.client}</p>
+        <div className="journey-facts">
           {j.start && (
-            <span>
-              <CalendarDays size={13} />
-              {shortDate(j.start)}
-            </span>
+            <div>
+              <small>
+                <CalendarDays size={13} />
+                Berangkat
+              </small>
+              <span>{shortDate(j.start)}</span>
+            </div>
           )}
           {j.guests && (
-            <span>
-              <Users size={13} />
-              {j.guests} tamu
-            </span>
+            <div>
+              <small>
+                <Users size={13} />
+                Tamu
+              </small>
+              <span>{j.guests} tamu</span>
+            </div>
           )}
         </div>
         {due && (

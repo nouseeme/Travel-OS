@@ -1,0 +1,5 @@
+interface:
+  display_name: Review Animations
+  short_description: Review animation code for motion quality
+policy:
+  allow_implicit_invocation: false

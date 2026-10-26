@@ -281,7 +281,7 @@ export function Detail({
       {tab === "overview" && (
         <>
           <div className="detail-overview detail-overview-simple">
-            <article className="panel">
+            <article className="panel record-summary">
               <div className="panel-heading">
                 <h2>Ringkasan {j.kind === "trip" ? "Trip" : "Lead"}</h2>
                 <span className="tag neutral">{j.client_type || "Client"}</span>
@@ -606,7 +606,7 @@ function Notes({
     }
   }
   return (
-    <section className="panel spaced-panel">
+    <section className="panel spaced-panel notes-panel">
       <div className="panel-heading">
         <div>
           <h2>Notes</h2>

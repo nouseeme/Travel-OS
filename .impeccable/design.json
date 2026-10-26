@@ -1,0 +1,477 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-26T10:25:33.606638+00:00",
+  "title": "Design System: travelOS · Egimu Travel",
+  "extensions": {
+    "colorMeta": {
+      "bg": {
+        "role": "neutral",
+        "displayName": "Cool Canvas",
+        "canonical": "#f6f7f9",
+        "tonalRamp": [
+          "oklch(15.000% 0.00287 264.542)",
+          "oklch(26.429% 0.00287 264.542)",
+          "oklch(37.857% 0.00287 264.542)",
+          "oklch(49.286% 0.00287 264.542)",
+          "oklch(60.714% 0.00287 264.542)",
+          "oklch(72.143% 0.00287 264.542)",
+          "oklch(83.571% 0.00287 264.542)",
+          "oklch(95.000% 0.00287 264.542)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "White Paper",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "oklch(15.000% 0.00000 0.000)",
+          "oklch(26.429% 0.00000 0.000)",
+          "oklch(37.857% 0.00000 0.000)",
+          "oklch(49.286% 0.00000 0.000)",
+          "oklch(60.714% 0.00000 0.000)",
+          "oklch(72.143% 0.00000 0.000)",
+          "oklch(83.571% 0.00000 0.000)",
+          "oklch(95.000% 0.00000 0.000)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Working Ink",
+        "canonical": "#242a30",
+        "tonalRamp": [
+          "oklch(15.000% 0.01397 248.322)",
+          "oklch(26.429% 0.01397 248.322)",
+          "oklch(37.857% 0.01397 248.322)",
+          "oklch(49.286% 0.01397 248.322)",
+          "oklch(60.714% 0.01397 248.322)",
+          "oklch(72.143% 0.01397 248.322)",
+          "oklch(83.571% 0.01397 248.322)",
+          "oklch(95.000% 0.01397 248.322)"
+        ]
+      },
+      "action": {
+        "role": "primary",
+        "displayName": "Charcoal Action",
+        "canonical": "#252b31",
+        "tonalRamp": [
+          "oklch(15.000% 0.01392 248.314)",
+          "oklch(26.429% 0.01392 248.314)",
+          "oklch(37.857% 0.01392 248.314)",
+          "oklch(49.286% 0.01392 248.314)",
+          "oklch(60.714% 0.01392 248.314)",
+          "oklch(72.143% 0.01392 248.314)",
+          "oklch(83.571% 0.01392 248.314)",
+          "oklch(95.000% 0.01392 248.314)"
+        ]
+      },
+      "green": {
+        "role": "primary",
+        "displayName": "Desk Sage",
+        "canonical": "#326652",
+        "tonalRamp": [
+          "oklch(15.000% 0.06541 166.377)",
+          "oklch(26.429% 0.06541 166.377)",
+          "oklch(37.857% 0.06541 166.377)",
+          "oklch(49.286% 0.06541 166.377)",
+          "oklch(60.714% 0.06541 166.377)",
+          "oklch(72.143% 0.06541 166.377)",
+          "oklch(83.571% 0.06541 166.377)",
+          "oklch(95.000% 0.06541 166.377)"
+        ]
+      },
+      "green-soft": {
+        "role": "primary",
+        "displayName": "Soft Sage",
+        "canonical": "#edf4f0",
+        "tonalRamp": [
+          "oklch(15.000% 0.00910 161.351)",
+          "oklch(26.429% 0.00910 161.351)",
+          "oklch(37.857% 0.00910 161.351)",
+          "oklch(49.286% 0.00910 161.351)",
+          "oklch(60.714% 0.00910 161.351)",
+          "oklch(72.143% 0.00910 161.351)",
+          "oklch(83.571% 0.00910 161.351)",
+          "oklch(95.000% 0.00910 161.351)"
+        ]
+      },
+      "warm": {
+        "role": "neutral",
+        "displayName": "Warm Signal",
+        "canonical": "#fcf5e8",
+        "tonalRamp": [
+          "oklch(15.000% 0.01874 83.064)",
+          "oklch(26.429% 0.01874 83.064)",
+          "oklch(37.857% 0.01874 83.064)",
+          "oklch(49.286% 0.01874 83.064)",
+          "oklch(60.714% 0.01874 83.064)",
+          "oklch(72.143% 0.01874 83.064)",
+          "oklch(83.571% 0.01874 83.064)",
+          "oklch(95.000% 0.01874 83.064)"
+        ]
+      },
+      "red": {
+        "role": "neutral",
+        "displayName": "Negative Red",
+        "canonical": "#ab453d",
+        "tonalRamp": [
+          "oklch(15.000% 0.13584 27.191)",
+          "oklch(26.429% 0.13584 27.191)",
+          "oklch(37.857% 0.13584 27.191)",
+          "oklch(49.286% 0.13584 27.191)",
+          "oklch(60.714% 0.13584 27.191)",
+          "oklch(72.143% 0.13584 27.191)",
+          "oklch(83.571% 0.13584 27.191)",
+          "oklch(95.000% 0.13584 27.191)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted Slate",
+        "canonical": "#626b74",
+        "tonalRamp": [
+          "oklch(15.000% 0.01797 248.171)",
+          "oklch(26.429% 0.01797 248.171)",
+          "oklch(37.857% 0.01797 248.171)",
+          "oklch(49.286% 0.01797 248.171)",
+          "oklch(60.714% 0.01797 248.171)",
+          "oklch(72.143% 0.01797 248.171)",
+          "oklch(83.571% 0.01797 248.171)",
+          "oklch(95.000% 0.01797 248.171)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Fine Line",
+        "canonical": "#e5e8ec",
+        "tonalRamp": [
+          "oklch(15.000% 0.00630 255.477)",
+          "oklch(26.429% 0.00630 255.477)",
+          "oklch(37.857% 0.00630 255.477)",
+          "oklch(49.286% 0.00630 255.477)",
+          "oklch(60.714% 0.00630 255.477)",
+          "oklch(72.143% 0.00630 255.477)",
+          "oklch(83.571% 0.00630 255.477)",
+          "oklch(95.000% 0.00630 255.477)"
+        ]
+      },
+      "control-border": {
+        "role": "neutral",
+        "displayName": "Control Stroke",
+        "canonical": "#cbd1d8",
+        "tonalRamp": [
+          "oklch(15.000% 0.01171 252.101)",
+          "oklch(26.429% 0.01171 252.101)",
+          "oklch(37.857% 0.01171 252.101)",
+          "oklch(49.286% 0.01171 252.101)",
+          "oklch(60.714% 0.01171 252.101)",
+          "oklch(72.143% 0.01171 252.101)",
+          "oklch(83.571% 0.01171 252.101)",
+          "oklch(95.000% 0.01171 252.101)"
+        ]
+      },
+      "surface-soft": {
+        "role": "neutral",
+        "displayName": "Soft Surface",
+        "canonical": "#f7f8fa",
+        "tonalRamp": [
+          "oklch(15.000% 0.00287 264.542)",
+          "oklch(26.429% 0.00287 264.542)",
+          "oklch(37.857% 0.00287 264.542)",
+          "oklch(49.286% 0.00287 264.542)",
+          "oklch(60.714% 0.00287 264.542)",
+          "oklch(72.143% 0.00287 264.542)",
+          "oklch(83.571% 0.00287 264.542)",
+          "oklch(95.000% 0.00287 264.542)"
+        ]
+      },
+      "surface-inset": {
+        "role": "neutral",
+        "displayName": "Inset Surface",
+        "canonical": "#f3f5f7",
+        "tonalRamp": [
+          "oklch(15.000% 0.00343 247.858)",
+          "oklch(26.429% 0.00343 247.858)",
+          "oklch(37.857% 0.00343 247.858)",
+          "oklch(49.286% 0.00343 247.858)",
+          "oklch(60.714% 0.00343 247.858)",
+          "oklch(72.143% 0.00343 247.858)",
+          "oklch(83.571% 0.00343 247.858)",
+          "oklch(95.000% 0.00343 247.858)"
+        ]
+      },
+      "chart-accent": {
+        "role": "primary",
+        "displayName": "Chart Sage",
+        "canonical": "#4c7866",
+        "tonalRamp": [
+          "oklch(15.000% 0.05669 166.583)",
+          "oklch(26.429% 0.05669 166.583)",
+          "oklch(37.857% 0.05669 166.583)",
+          "oklch(49.286% 0.05669 166.583)",
+          "oklch(60.714% 0.05669 166.583)",
+          "oklch(72.143% 0.05669 166.583)",
+          "oklch(83.571% 0.05669 166.583)",
+          "oklch(95.000% 0.05669 166.583)"
+        ]
+      },
+      "chart-comparison": {
+        "role": "primary",
+        "displayName": "Comparison Sage",
+        "canonical": "#b6c5be",
+        "tonalRamp": [
+          "oklch(15.000% 0.01907 166.252)",
+          "oklch(26.429% 0.01907 166.252)",
+          "oklch(37.857% 0.01907 166.252)",
+          "oklch(49.286% 0.01907 166.252)",
+          "oklch(60.714% 0.01907 166.252)",
+          "oklch(72.143% 0.01907 166.252)",
+          "oklch(83.571% 0.01907 166.252)",
+          "oklch(95.000% 0.01907 166.252)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Workspace headings."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Section and panel titles."
+      },
+      "card-title": {
+        "displayName": "Card Title",
+        "purpose": "Compact record titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Working text and forms."
+      },
+      "editor": {
+        "displayName": "Editor",
+        "purpose": "Rich text content."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Metadata and metric labels."
+      },
+      "metric": {
+        "displayName": "Metric",
+        "purpose": "Tabular summary counts."
+      }
+    },
+    "shadows": [
+      {
+        "name": "control-hover",
+        "value": "0 2px 4px #18232e05",
+        "purpose": "the shared small hover shadow."
+      },
+      {
+        "name": "card-hover",
+        "value": "0 6px 16px #18232e0a",
+        "purpose": "the shared raised surface shadow."
+      },
+      {
+        "name": "card-rest",
+        "value": "0 2px 3px #18232e03",
+        "purpose": "near-flat board cards."
+      },
+      {
+        "name": "navigation-rest",
+        "value": "0 3px 12px #18232e03",
+        "purpose": "the floating desktop panel."
+      },
+      {
+        "name": "drawer",
+        "value": "12px 0 40px #18232e14",
+        "purpose": "mobile navigation above its scrim."
+      },
+      {
+        "name": "dialog",
+        "value": "0 24px 80px #18232e26",
+        "purpose": "existing modal layer."
+      },
+      {
+        "name": "authentication-frame",
+        "value": "0 12px 48px #18232e06",
+        "purpose": "the framed desktop entry screen."
+      }
+    ],
+    "motion": [
+      {
+        "name": "motion-fast",
+        "value": "140ms",
+        "purpose": "Control and field transitions."
+      },
+      {
+        "name": "motion-normal",
+        "value": "180ms",
+        "purpose": "Surfaces, drawer, and dialogs."
+      },
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.2, 0.8, 0.2, 1)",
+        "purpose": "Eased movement into a surface."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "workspace-wide",
+        "value": "1200px"
+      },
+      {
+        "name": "board-overflow",
+        "value": "1100px"
+      },
+      {
+        "name": "stacked-auth",
+        "value": "900px"
+      },
+      {
+        "name": "navigation-drawer",
+        "value": "850px"
+      },
+      {
+        "name": "compact-board",
+        "value": "700px"
+      },
+      {
+        "name": "phone-workspace",
+        "value": "650px"
+      },
+      {
+        "name": "phone-help",
+        "value": "640px"
+      },
+      {
+        "name": "finance-overflow",
+        "value": "600px"
+      },
+      {
+        "name": "compact-sharing",
+        "value": "520px"
+      },
+      {
+        "name": "native-date-stack",
+        "value": "380px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Existing primary action.",
+      "html": "<button class=\"ds-button-primary\">Simpan</button>",
+      "css": ".ds-button-primary{font-family:var(--font-sans,\"Plus Jakarta Sans\",system-ui,sans-serif);display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:10px 16px;border:1px solid transparent;border-radius:var(--radius-sm,8px);background:var(--action,#252b31);color:var(--paper,#fff);font-size:14px;line-height:1.5;font-weight:550;cursor:pointer;} .ds-button-primary:focus-visible{outline:3px solid var(--green,#326652);outline-offset:3px;} .ds-button-primary:disabled{opacity:.5;cursor:default;} .ds-button-primary:active:not(:disabled){opacity:.8;} @media(prefers-reduced-motion:no-preference){.ds-button-primary{transition:background-color var(--motion-fast,140ms) ease;} .ds-button-primary:active:not(:disabled){translate:0 1px;}} @media(hover:hover) and (pointer:fine){.ds-button-primary:hover:not(:disabled){background:#3b4249;box-shadow:var(--shadow-sm,0 2px 4px #18232e05);}}"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Existing outline action.",
+      "html": "<button class=\"ds-button-outline\">Batal</button>",
+      "css": ".ds-button-outline{font-family:var(--font-sans,\"Plus Jakarta Sans\",system-ui,sans-serif);display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:10px 16px;border:1px solid var(--control-border,#cbd1d8);border-radius:var(--radius-sm,8px);background:var(--paper,#fff);color:var(--ink,#242a30);font-size:14px;line-height:1.5;font-weight:550;cursor:pointer;} .ds-button-outline:focus-visible{outline:3px solid var(--green,#326652);outline-offset:3px;} .ds-button-outline:disabled{opacity:.5;cursor:default;} .ds-button-outline:active:not(:disabled){opacity:.8;} @media(prefers-reduced-motion:no-preference){.ds-button-outline{transition:background-color var(--motion-fast,140ms) ease;} .ds-button-outline:active:not(:disabled){translate:0 1px;}} @media(hover:hover) and (pointer:fine){.ds-button-outline:hover:not(:disabled){background:#f5f6f7;box-shadow:var(--shadow-sm,0 2px 4px #18232e05);}}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Existing ghost action.",
+      "html": "<button class=\"ds-button-ghost\">Edit</button>",
+      "css": ".ds-button-ghost{font-family:var(--font-sans,\"Plus Jakarta Sans\",system-ui,sans-serif);display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:10px 16px;border:1px solid transparent;border-radius:var(--radius-sm,8px);background:transparent;color:var(--ink,#242a30);font-size:14px;line-height:1.5;font-weight:550;cursor:pointer;} .ds-button-ghost:focus-visible{outline:3px solid var(--green,#326652);outline-offset:3px;} .ds-button-ghost:disabled{opacity:.5;cursor:default;} .ds-button-ghost:active:not(:disabled){opacity:.8;} @media(prefers-reduced-motion:no-preference){.ds-button-ghost{transition:background-color var(--motion-fast,140ms) ease;} .ds-button-ghost:active:not(:disabled){translate:0 1px;}} @media(hover:hover) and (pointer:fine){.ds-button-ghost:hover:not(:disabled){background:#eef0f2;box-shadow:var(--shadow-sm,0 2px 4px #18232e05);}}"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Existing danger action.",
+      "html": "<button class=\"ds-button-danger\">Hapus</button>",
+      "css": ".ds-button-danger{font-family:var(--font-sans,\"Plus Jakarta Sans\",system-ui,sans-serif);display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:10px 16px;border:1px solid transparent;border-radius:var(--radius-sm,8px);background:#a4473b;color:var(--paper,#fff);font-size:14px;line-height:1.5;font-weight:550;cursor:pointer;} .ds-button-danger:focus-visible{outline:3px solid var(--green,#326652);outline-offset:3px;} .ds-button-danger:disabled{opacity:.5;cursor:default;} .ds-button-danger:active:not(:disabled){opacity:.8;} @media(prefers-reduced-motion:no-preference){.ds-button-danger{transition:background-color var(--motion-fast,140ms) ease;} .ds-button-danger:active:not(:disabled){translate:0 1px;}}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Outlined white text field.",
+      "html": "<label class=\"ds-field-label\">Nama<input class=\"ds-field\" placeholder=\"Nama kontak\"></label>",
+      "css": ".ds-field-label{font-family:var(--font-sans,\"Plus Jakarta Sans\",system-ui,sans-serif);display:flex;flex-direction:column;gap:8px;font-size:14px;font-weight:500;} .ds-field{font-family:var(--font-sans,\"Plus Jakarta Sans\",system-ui,sans-serif);min-height:44px;min-width:0;max-width:100%;padding:10px 12px;border:1px solid var(--control-border,#cbd1d8);border-radius:var(--radius-sm,8px);background:var(--paper,#fff);color:var(--ink,#242a30);font-size:14px;} .ds-field::placeholder{color:var(--muted,#626b74);opacity:1;} .ds-field:focus-visible{outline:3px solid var(--green,#326652);outline-offset:3px;} @media(pointer:coarse){.ds-field{font-size:16px;}}"
+    },
+    {
+      "name": "Labelled Navigation",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "Neutral active row inside the desktop floating panel.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Workspace\"><button class=\"ds-nav-item ds-nav-active\" aria-current=\"page\">Home</button><button class=\"ds-nav-item\">Sales</button><button class=\"ds-nav-item\">Trip</button></nav>",
+      "css": ".ds-nav{font-family:var(--font-sans,\"Plus Jakarta Sans\",system-ui,sans-serif);display:flex;flex-direction:column;width:220px;padding:24px 12px 0;border:1px solid #e8ebef;border-radius:16px;background:var(--paper,#fff);box-shadow:0 3px 12px #18232e03;} .ds-nav-item{font-family:var(--font-sans,\"Plus Jakarta Sans\",system-ui,sans-serif);text-align:left;min-height:43px;padding:10px 12px;border:0;border-radius:8px;background:transparent;color:#535d67;font-size:13px;font-weight:450;cursor:pointer;} .ds-nav-active{background:#f0f2f5;color:#222a32;font-weight:600;box-shadow:inset 0 0 0 1px #e6e9ee;} .ds-nav-item:focus-visible{outline:3px solid var(--green,#326652);outline-offset:3px;} .ds-nav-item:active{opacity:.8;} @media(hover:hover) and (pointer:fine){.ds-nav-item:hover{background:#e9ecef;}}"
+    },
+    {
+      "name": "Neutral Tag",
+      "kind": "chip",
+      "refersTo": "chip-neutral",
+      "description": "Compact record context.",
+      "html": "<span class=\"ds-tag\">Custom trip</span>",
+      "css": ".ds-tag{font-family:var(--font-sans,\"Plus Jakarta Sans\",system-ui,sans-serif);display:inline-block;padding:3px 7px;border-radius:5px;background:#f0f2f4;color:var(--muted,#626b74);font-size:12px;font-weight:500;line-height:1.5;}"
+    },
+    {
+      "name": "Compact Record Card",
+      "kind": "card",
+      "refersTo": "board-card",
+      "description": "Compact title and two-part date/guest facts.",
+      "html": "<article class=\"ds-card\"><span class=\"ds-card-tag\">Custom trip</span><button class=\"ds-card-title\">Perjalanan keluarga</button><div class=\"ds-card-facts\"><div><small>Tanggal</small><span>26–29 Okt 2026</span></div><div><small>Tamu</small><span>4 orang</span></div></div></article>",
+      "css": ".ds-card{font-family:var(--font-sans,\"Plus Jakarta Sans\",system-ui,sans-serif);padding:14px;border:1px solid #e2e7ed;border-radius:10px;background:var(--paper,#fff);color:var(--ink,#242a30);box-shadow:0 2px 3px #18232e03;} .ds-card-tag{display:inline-block;margin-bottom:8px;padding:3px 7px;border-radius:5px;color:var(--muted,#626b74);background:#f0f2f4;font-size:12px;font-weight:500;line-height:1.5;} .ds-card-title{font-family:var(--font-sans,\"Plus Jakarta Sans\",system-ui,sans-serif);display:block;text-align:left;padding:0;border:0;background:transparent;color:inherit;font-size:14px;font-weight:600;line-height:1.5;letter-spacing:-.02em;cursor:pointer;} .ds-card-title:focus-visible{outline:3px solid var(--green,#326652);outline-offset:3px;} .ds-card-facts{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);margin-top:12px;padding:10px 0;gap:8px;border-block:1px solid #edf0f4;} .ds-card-facts>div+div{border-left:1px solid #e6ebef;padding-left:12px;} .ds-card-facts small{display:block;color:var(--muted,#626b74);font-size:12px;margin-bottom:4px;} .ds-card-facts span{font-size:12px;font-weight:550;} @media(hover:hover) and (pointer:fine){.ds-card:hover{border-color:#cbd2d9;box-shadow:var(--shadow-raised,0 6px 16px #18232e0a);} .ds-card-title:hover{color:var(--green,#326652);}}"
+    },
+    {
+      "name": "Shared Metric Strip",
+      "kind": "custom",
+      "refersTo": "metric-strip",
+      "description": "Related counters share an outline and dividers.",
+      "html": "<div class=\"ds-metrics\"><div class=\"ds-metric\"><strong>8</strong><span>Aktif</span></div><div class=\"ds-metric\"><strong>3</strong><span>Selesai</span></div></div>",
+      "css": ".ds-metrics{font-family:var(--font-sans,\"Plus Jakarta Sans\",system-ui,sans-serif);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid #e5e9ee;border-radius:14px;overflow:hidden;background:var(--paper,#fff);color:var(--ink,#242a30);} .ds-metric{display:flex;align-items:center;gap:16px;padding:24px 20px;} .ds-metric+.ds-metric{border-left:1px solid var(--line,#e5e8ec);} .ds-metric strong{font-size:40px;font-weight:500;line-height:1.15;letter-spacing:-.04em;font-variant-numeric:tabular-nums;} .ds-metric span{font-size:12px;font-weight:550;line-height:1.5;}"
+    },
+    {
+      "name": "Open Notes Surface",
+      "kind": "custom",
+      "refersTo": "notes-editor",
+      "description": "Title, toolbar, and body share the parent writing surface.",
+      "html": "<section class=\"ds-notes\"><input class=\"ds-note-title\" aria-label=\"Judul catatan\" value=\"Catatan perjalanan\"><div class=\"ds-note-tools\"><button class=\"ds-note-tool\" aria-label=\"Bold\"><b>B</b></button></div><div class=\"ds-note-content\" contenteditable=\"true\" role=\"textbox\" aria-label=\"Isi catatan\">Tulis catatan perjalanan di sini.</div></section>",
+      "css": ".ds-notes{font-family:var(--font-sans,\"Plus Jakarta Sans\",system-ui,sans-serif);color:var(--ink,#242a30);background:var(--paper,#fff);} .ds-note-title{font-family:var(--font-sans,\"Plus Jakarta Sans\",system-ui,sans-serif);width:100%;padding:6px 0 18px;border:0;border-bottom:1px solid var(--line,#e5e8ec);border-radius:0;background:transparent;color:inherit;font-size:16px;font-weight:600;} .ds-note-title:focus-visible{outline:3px solid var(--green,#326652);outline-offset:3px;} .ds-note-tools{display:flex;padding:8px 0;border-bottom:1px solid var(--line,#e5e8ec);} .ds-note-tool{display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:6px;background:transparent;color:inherit;cursor:pointer;} .ds-note-tool:focus-visible{outline:3px solid var(--green,#326652);outline-offset:3px;} .ds-note-content{min-height:220px;padding:16px 0;font-size:16px;line-height:1.8;overflow-wrap:anywhere;} .ds-note-content:focus-visible{outline:2px solid var(--green-soft,#edf4f0);outline-offset:2px;} @media(hover:hover) and (pointer:fine){.ds-note-tool:hover{background:var(--green-soft,#edf4f0);color:var(--green,#326652);}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "A calm travel desk",
+    "overview": "The workspace presents operational information on a cool neutral canvas with white work surfaces, charcoal actions, and quiet semantic color. A floating labelled navigation panel, open columns, grouped facts, and shared metric strips make context and work easy to skim. Plus Jakarta Sans supplies both headings and working text.\n\nThe visual system describes the implemented October 26, 2026 redesign. Preserve travelOS, Egimu Travel, and the existing brand image at `public/brand/egimu-logo.jpg`. Existing routes, actions, forms, permission boundaries, financial meanings, and recovery behavior remain authoritative. See PRODUCT.md for product constraints and the surface brief for the approved direction; this document records reusable visual rules.",
+    "keyCharacteristics": [
+      "Cool neutral canvas and white work surfaces.",
+      "Charcoal actions with restrained semantic sage, blue, and amber.",
+      "Readable facts and metadata grouped by meaning.",
+      "Flat surfaces with fine outlines and quiet interaction feedback.",
+      "The same operational capabilities across desktop and narrow screens."
+    ],
+    "rules": [
+      {
+        "name": "The Semantic Accent Rule",
+        "body": "Use accent color to communicate data, state, focus, or an existing link; keep everyday navigation and primary actions neutral.",
+        "section": "colors"
+      },
+      {
+        "name": "The Grouped Facts Rule",
+        "body": "Keep each record's facts visually together, with labels close to values and existing controls clearly separated from descriptive content.",
+        "section": "layout"
+      }
+    ],
+    "dos": [
+      "Do preserve existing actions, routes, form behavior, permissions, and data meanings while styling new surfaces.",
+      "Do group related facts and metrics within shared outlined surfaces.",
+      "Do keep semantic color paired with readable text labels.",
+      "Do retain visible keyboard focus, reduced-motion behavior, and responsive overflow affordances.",
+      "Do preserve the existing Egimu Travel brand image and travelOS identity."
+    ],
+    "donts": [
+      "Don't introduce extra workflow steps, KPIs, or product controls as decoration; use existing content and actions.",
+      "Don't replace the implemented composition with uniformly boxed columns; keep board columns open and group the records themselves.",
+      "Don't compress native date fields below their usable track; keep the narrow-screen stacking rules."
+    ]
+  }
+}

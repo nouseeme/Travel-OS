@@ -1,0 +1,357 @@
+{
+  "results": [
+    {
+      "name": "home-desktop",
+      "title": "Selamat datang, Nadia.",
+      "overflow": false,
+      "content": "Selamat datang, Nadia.\n\nApa yang ingin kita selesaikan hari ini? Semua pekerjaan Anda ada di sini.\n\n"
+    },
+    {
+      "name": "home-mobile",
+      "title": "Selamat datang, Nadia.",
+      "overflow": false,
+      "content": "Selamat datang, Nadia.\n\nApa yang ingin kita selesaikan hari ini? Semua pekerjaan Anda ada di sini.\n\n"
+    },
+    {
+      "name": "navigation-mobile",
+      "title": "Selamat datang, Nadia.",
+      "overflow": false,
+      "content": "Selamat datang, Nadia.\n\nApa yang ingin kita selesaikan hari ini? Semua pekerjaan Anda ada di sini.\n\n"
+    },
+    {
+      "name": "task-dialog-mobile",
+      "title": "Selamat datang, Nadia.",
+      "overflow": false,
+      "content": "Selamat datang, Nadia.\n\nApa yang ingin kita selesaikan hari ini? Semua pekerjaan Anda ada di sini.\n\n"
+    },
+    {
+      "name": "home-320",
+      "title": "Selamat datang, Nadia.",
+      "overflow": false,
+      "content": "Selamat datang, Nadia.\n\nApa yang ingin kita selesaikan hari ini? Semua pekerjaan Anda ada di sini.\n\n"
+    },
+    {
+      "name": "home-768",
+      "title": "Selamat datang, Nadia.",
+      "overflow": false,
+      "content": "Selamat datang, Nadia.\n\nApa yang ingin kita selesaikan hari ini? Semua pekerjaan Anda ada di sini.\n\n"
+    },
+    {
+      "name": "sales-desktop",
+      "title": "Sales CRM",
+      "overflow": false,
+      "content": "Sales CRM\n\nKelola opportunity, follow-up, dan langkah berikutnya dalam satu alur.\n\nArchive\nLead baru"
+    },
+    {
+      "name": "sales-mobile",
+      "title": "Sales CRM",
+      "overflow": false,
+      "content": "Sales CRM\n\nKelola opportunity, follow-up, dan langkah berikutnya dalam satu alur.\n\nArchive\nLead baru"
+    },
+    {
+      "name": "sales-analytics-desktop",
+      "title": "Sales CRM",
+      "overflow": false,
+      "content": "Sales CRM\n\nKelola opportunity, follow-up, dan langkah berikutnya dalam satu alur.\n\nArchive\nLead baru"
+    },
+    {
+      "name": "sales-analytics-mobile",
+      "title": "Sales CRM",
+      "overflow": false,
+      "content": "Sales CRM\n\nKelola opportunity, follow-up, dan langkah berikutnya dalam satu alur.\n\nArchive\nLead baru"
+    },
+    {
+      "name": "trips-desktop",
+      "title": "Trips",
+      "overflow": false,
+      "content": "Trips\n\nDari itinerary pertama sampai tamu kembali pulang.\n\nArchive\nTrip baru\nBoard\nCalendar\nSemua PI"
+    },
+    {
+      "name": "trips-mobile",
+      "title": "Trips",
+      "overflow": false,
+      "content": "Trips\n\nDari itinerary pertama sampai tamu kembali pulang.\n\nArchive\nTrip baru\nBoard\nCalendar\nSemua PI"
+    },
+    {
+      "name": "finance-desktop",
+      "title": "Finance",
+      "overflow": false,
+      "content": "Finance\n\nCatat Income / Receipts dan Expense / Payments. Satu ledger, dalam IDR.\n\nRecord transaction"
+    },
+    {
+      "name": "finance-mobile",
+      "title": "Finance",
+      "overflow": false,
+      "content": "Finance\n\nCatat Income / Receipts dan Expense / Payments. Satu ledger, dalam IDR.\n\nRecord transaction"
+    },
+    {
+      "name": "finance-overview-desktop",
+      "title": "Finance",
+      "overflow": false,
+      "content": "Finance\n\nCatat Income / Receipts dan Expense / Payments. Satu ledger, dalam IDR.\n\nRecord transaction"
+    },
+    {
+      "name": "finance-overview-mobile",
+      "title": "Finance",
+      "overflow": false,
+      "content": "Finance\n\nCatat Income / Receipts dan Expense / Payments. Satu ledger, dalam IDR.\n\nRecord transaction"
+    },
+    {
+      "name": "finance-comparison-desktop",
+      "title": "Finance",
+      "overflow": false,
+      "content": "Finance\n\nCatat Income / Receipts dan Expense / Payments. Satu ledger, dalam IDR.\n\nRecord transaction"
+    },
+    {
+      "name": "finance-comparison-mobile",
+      "title": "Finance",
+      "overflow": false,
+      "content": "Finance\n\nCatat Income / Receipts dan Expense / Payments. Satu ledger, dalam IDR.\n\nRecord transaction"
+    },
+    {
+      "name": "finance-budget-desktop",
+      "title": "Finance",
+      "overflow": false,
+      "content": "Finance\n\nCatat Income / Receipts dan Expense / Payments. Satu ledger, dalam IDR.\n\nRecord transaction"
+    },
+    {
+      "name": "finance-budget-mobile",
+      "title": "Finance",
+      "overflow": false,
+      "content": "Finance\n\nCatat Income / Receipts dan Expense / Payments. Satu ledger, dalam IDR.\n\nRecord transaction"
+    },
+    {
+      "name": "internal-desktop",
+      "title": "Internal",
+      "overflow": false,
+      "content": "Internal\n\nDokumen internal, template, dan catatan dalam satu tempat.\n\nDocs\nContacts\nInternal Docs\n+ "
+    },
+    {
+      "name": "internal-mobile",
+      "title": "Internal",
+      "overflow": false,
+      "content": "Internal\n\nDokumen internal, template, dan catatan dalam satu tempat.\n\nDocs\nContacts\nInternal Docs\n+ "
+    },
+    {
+      "name": "directory-desktop",
+      "title": "Internal",
+      "overflow": false,
+      "content": "Internal\n\nDokumen internal, template, dan catatan dalam satu tempat.\n\nDocs\nContacts\nContacts\nTambah "
+    },
+    {
+      "name": "directory-mobile",
+      "title": "Internal",
+      "overflow": false,
+      "content": "Internal\n\nDokumen internal, template, dan catatan dalam satu tempat.\n\nDocs\nContacts\nContacts\nTambah "
+    },
+    {
+      "name": "people-desktop",
+      "title": "People",
+      "overflow": false,
+      "content": "People\n\nKelola invitation dan akses setiap anggota workspace.\n\nUndang member\n3 member aktif + invita"
+    },
+    {
+      "name": "people-mobile",
+      "title": "People",
+      "overflow": false,
+      "content": "People\n\nKelola invitation dan akses setiap anggota workspace.\n\nUndang member\n3 member aktif + invita"
+    },
+    {
+      "name": "configuration-desktop",
+      "title": "Configuration",
+      "overflow": false,
+      "content": "Configuration\n\nSesuaikan tahapan Sales, kategori kas, dan template perjalanan.\n\nSales stages\nPipelin"
+    },
+    {
+      "name": "configuration-mobile",
+      "title": "Configuration",
+      "overflow": false,
+      "content": "Configuration\n\nSesuaikan tahapan Sales, kategori kas, dan template perjalanan.\n\nSales stages\nPipelin"
+    },
+    {
+      "name": "audit-desktop",
+      "title": "Audit history",
+      "overflow": false,
+      "content": "Audit history\n\nTelusuri tindakan penting dan koreksi tanpa mengubah riwayat.\n\nDari\nSampai\nActor\nSemu"
+    },
+    {
+      "name": "audit-mobile",
+      "title": "Audit history",
+      "overflow": false,
+      "content": "Audit history\n\nTelusuri tindakan penting dan koreksi tanpa mengubah riwayat.\n\nDari\nSampai\nActor\nSemu"
+    },
+    {
+      "name": "trip-detail-desktop",
+      "title": "Lombok · Island Discovery",
+      "overflow": false,
+      "content": "Kembali ke Trips\nPlanned\nPrivate trip\nLombok · Island Discovery\n\nKeluarga Wijaya · Trip workspace\n\nE"
+    },
+    {
+      "name": "trip-detail-mobile",
+      "title": "Lombok · Island Discovery",
+      "overflow": false,
+      "content": "Kembali ke Trips\nPlanned\nPrivate trip\nLombok · Island Discovery\n\nKeluarga Wijaya · Trip workspace\n\nE"
+    },
+    {
+      "name": "trip-itinerary-desktop",
+      "title": "Lombok · Island Discovery",
+      "overflow": false,
+      "content": "Kembali ke Trips\nPlanned\nPrivate trip\nLombok · Island Discovery\n\nKeluarga Wijaya · Trip workspace\n\nE"
+    },
+    {
+      "name": "trip-itinerary-mobile",
+      "title": "Lombok · Island Discovery",
+      "overflow": false,
+      "content": "Kembali ke Trips\nPlanned\nPrivate trip\nLombok · Island Discovery\n\nKeluarga Wijaya · Trip workspace\n\nE"
+    },
+    {
+      "name": "trip-notes-desktop",
+      "title": "Lombok · Island Discovery",
+      "overflow": false,
+      "content": "Kembali ke Trips\nPlanned\nPrivate trip\nLombok · Island Discovery\n\nKeluarga Wijaya · Trip workspace\n\nE"
+    },
+    {
+      "name": "trip-notes-mobile",
+      "title": "Lombok · Island Discovery",
+      "overflow": false,
+      "content": "Kembali ke Trips\nPlanned\nPrivate trip\nLombok · Island Discovery\n\nKeluarga Wijaya · Trip workspace\n\nE"
+    },
+    {
+      "name": "trip-contacts-desktop",
+      "title": "Lombok · Island Discovery",
+      "overflow": false,
+      "content": "Kembali ke Trips\nPlanned\nPrivate trip\nLombok · Island Discovery\n\nKeluarga Wijaya · Trip workspace\n\nE"
+    },
+    {
+      "name": "trip-contacts-mobile",
+      "title": "Lombok · Island Discovery",
+      "overflow": false,
+      "content": "Kembali ke Trips\nPlanned\nPrivate trip\nLombok · Island Discovery\n\nKeluarga Wijaya · Trip workspace\n\nE"
+    },
+    {
+      "name": "trip-finance-desktop",
+      "title": "Lombok · Island Discovery",
+      "overflow": false,
+      "content": "Kembali ke Trips\nPlanned\nPrivate trip\nLombok · Island Discovery\n\nKeluarga Wijaya · Trip workspace\n\nE"
+    },
+    {
+      "name": "trip-finance-mobile",
+      "title": "Lombok · Island Discovery",
+      "overflow": false,
+      "content": "Kembali ke Trips\nPlanned\nPrivate trip\nLombok · Island Discovery\n\nKeluarga Wijaya · Trip workspace\n\nE"
+    },
+    {
+      "name": "trip-share-trip-desktop",
+      "title": "Lombok · Island Discovery",
+      "overflow": false,
+      "content": "Kembali ke Trips\nPlanned\nPrivate trip\nLombok · Island Discovery\n\nKeluarga Wijaya · Trip workspace\n\nE"
+    },
+    {
+      "name": "trip-share-trip-mobile",
+      "title": "Lombok · Island Discovery",
+      "overflow": false,
+      "content": "Kembali ke Trips\nPlanned\nPrivate trip\nLombok · Island Discovery\n\nKeluarga Wijaya · Trip workspace\n\nE"
+    },
+    {
+      "name": "lead-detail-desktop",
+      "title": "Yogyakarta · Cultural Escape",
+      "overflow": false,
+      "content": "Kembali ke Sales\nDrafts\nGroup trip\nYogyakarta · Cultural Escape\n\nKomunitas Jalan Bersama · Sales opp"
+    },
+    {
+      "name": "lead-detail-mobile",
+      "title": "Yogyakarta · Cultural Escape",
+      "overflow": false,
+      "content": "Kembali ke Sales\nDrafts\nGroup trip\nYogyakarta · Cultural Escape\n\nKomunitas Jalan Bersama · Sales opp"
+    },
+    {
+      "name": "doc-detail-desktop",
+      "title": "Panduan operasional perjalanan",
+      "overflow": false,
+      "content": "← Internal Docs\nPanduan operasional perjalanan\n\n24 Okt 2026 · Nadia Putri · SOP\n\nEdit\nShare · View o"
+    },
+    {
+      "name": "doc-detail-mobile",
+      "title": "Panduan operasional perjalanan",
+      "overflow": false,
+      "content": "← Internal Docs\nPanduan operasional perjalanan\n\n24 Okt 2026 · Nadia Putri · SOP\n\nEdit\nShare · View o"
+    },
+    {
+      "name": "login-desktop",
+      "title": "Perjalanan hebat\ndimulai dari\ntim yang selaras.",
+      "overflow": false
+    },
+    {
+      "name": "login-mobile",
+      "title": "Perjalanan hebat dimulai dari tim yang selaras.",
+      "overflow": false
+    },
+    {
+      "name": "password-desktop",
+      "title": "Perjalanan hebat\ndimulai dari\ntim yang selaras.",
+      "overflow": false
+    },
+    {
+      "name": "password-mobile",
+      "title": "Perjalanan hebat dimulai dari tim yang selaras.",
+      "overflow": false
+    },
+    {
+      "name": "help-desktop",
+      "title": "Mau cari panduan apa?",
+      "overflow": false,
+      "content": "PUSAT BANTUAN\n\nMau cari panduan apa?\n\nMulai dari modul yang sedang kamu pakai. Kita bahas cara kerja"
+    },
+    {
+      "name": "help-mobile",
+      "title": "Mau cari panduan apa?",
+      "overflow": false,
+      "content": "PUSAT BANTUAN\n\nMau cari panduan apa?\n\nMulai dari modul yang sedang kamu pakai. Kita bahas cara kerja"
+    },
+    {
+      "name": "help-article-desktop",
+      "title": "Home — mulai kerja dari sini",
+      "overflow": false,
+      "content": "Untuk semua anggota tim\n\nHome — mulai kerja dari sini\n\nBaru login dan bingung mau mulai dari mana? B"
+    },
+    {
+      "name": "help-article-mobile",
+      "title": "Home — mulai kerja dari sini",
+      "overflow": false,
+      "content": "Untuk semua anggota tim\n\nHome — mulai kerja dari sini\n\nBaru login dan bingung mau mulai dari mana? B"
+    },
+    {
+      "name": "shared-trip-desktop",
+      "title": "Link tidak tersedia",
+      "overflow": false
+    },
+    {
+      "name": "shared-trip-mobile",
+      "title": "Link tidak tersedia",
+      "overflow": false
+    },
+    {
+      "name": "home-empty-desktop",
+      "title": "Selamat datang, Nadia.",
+      "overflow": false,
+      "content": "Selamat datang, Nadia.\n\nApa yang ingin kita selesaikan hari ini? Semua pekerjaan Anda ada di sini.\n\n"
+    },
+    {
+      "name": "home-empty-mobile",
+      "title": "Selamat datang, Nadia.",
+      "overflow": false,
+      "content": "Selamat datang, Nadia.\n\nApa yang ingin kita selesaikan hari ini? Semua pekerjaan Anda ada di sini.\n\n"
+    },
+    {
+      "name": "home-error-desktop",
+      "overflow": false,
+      "content": "Preview: hasil belum dapat dimuat. Silakan coba lagi.\nCoba lagi\nLogin / setup"
+    },
+    {
+      "name": "home-error-mobile",
+      "overflow": false,
+      "content": "Preview: hasil belum dapat dimuat. Silakan coba lagi.\nCoba lagi\nLogin / setup"
+    }
+  ],
+  "consoleErrors": []
+}

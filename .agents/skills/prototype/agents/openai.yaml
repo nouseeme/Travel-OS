@@ -1,0 +1,5 @@
+interface:
+  display_name: UI Prototype Variants
+  short_description: Compare distinct UI variants in a visual picker
+policy:
+  allow_implicit_invocation: false

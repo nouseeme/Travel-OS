@@ -1,0 +1,53 @@
+{
+  "results": [
+    {
+      "name": "home-desktop",
+      "title": "Selamat datang, Nadia.",
+      "overflow": false,
+      "content": "Selamat datang, Nadia.\n\nApa yang ingin kita selesaikan hari ini? Semua pekerjaan Anda ada di sini.\n\n"
+    },
+    {
+      "name": "home-mobile",
+      "title": "Selamat datang, Nadia.",
+      "overflow": false,
+      "content": "Selamat datang, Nadia.\n\nApa yang ingin kita selesaikan hari ini? Semua pekerjaan Anda ada di sini.\n\n"
+    },
+    {
+      "name": "navigation-mobile",
+      "title": "Selamat datang, Nadia.",
+      "overflow": false,
+      "content": "Selamat datang, Nadia.\n\nApa yang ingin kita selesaikan hari ini? Semua pekerjaan Anda ada di sini.\n\n"
+    },
+    {
+      "name": "task-dialog-mobile",
+      "title": "Selamat datang, Nadia.",
+      "overflow": false,
+      "content": "Selamat datang, Nadia.\n\nApa yang ingin kita selesaikan hari ini? Semua pekerjaan Anda ada di sini.\n\n"
+    },
+    {
+      "name": "home-320",
+      "title": "Selamat datang, Nadia.",
+      "overflow": false,
+      "content": "Selamat datang, Nadia.\n\nApa yang ingin kita selesaikan hari ini? Semua pekerjaan Anda ada di sini.\n\n"
+    },
+    {
+      "name": "home-768",
+      "title": "Selamat datang, Nadia.",
+      "overflow": false,
+      "content": "Selamat datang, Nadia.\n\nApa yang ingin kita selesaikan hari ini? Semua pekerjaan Anda ada di sini.\n\n"
+    },
+    {
+      "name": "home-card-320",
+      "title": "Selamat datang, Nadia.",
+      "overflow": false,
+      "content": "Selamat datang, Nadia.\n\nApa yang ingin kita selesaikan hari ini? Semua pekerjaan Anda ada di sini.\n\n"
+    },
+    {
+      "name": "home-card-mobile",
+      "title": "Selamat datang, Nadia.",
+      "overflow": false,
+      "content": "Selamat datang, Nadia.\n\nApa yang ingin kita selesaikan hari ini? Semua pekerjaan Anda ada di sini.\n\n"
+    }
+  ],
+  "consoleErrors": []
+}

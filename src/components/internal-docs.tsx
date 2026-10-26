@@ -1,5 +1,6 @@
 "use client";
 import { SelectionTable } from "./selection-table";
+import { FileText } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { Command, InternalDoc, Snapshot, Filters } from "@/lib/model";
@@ -301,10 +302,11 @@ export function InternalDocs({
               >
                 <td>
                   <button
-                    className="table-link"
+                    className="table-link document-title-link"
                     onClick={() => navigate("/docs/" + d.id)}
                   >
-                    {d.title}
+                    <FileText size={18} aria-hidden="true" />
+                    <span>{d.title}</span>
                   </button>
                 </td>
                 <td>{shortDate(d.date)}</td>

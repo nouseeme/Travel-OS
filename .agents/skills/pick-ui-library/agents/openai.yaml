@@ -1,0 +1,5 @@
+interface:
+  display_name: Pick UI Library
+  short_description: Choose a frontend library for a specific task
+policy:
+  allow_implicit_invocation: false

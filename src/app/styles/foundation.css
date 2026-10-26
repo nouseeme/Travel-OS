@@ -62,12 +62,14 @@ textarea:focus-visible {
 }
 th {
   border-bottom: 1px solid var(--line);
-  color: var(--muted);
-  background: #fbfcf8;
   white-space: nowrap;
-  font-size: var(--text-xs);
-  font-weight: 650;
-  padding: 14px var(--space-4);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+  padding: 14px 20px;
+  background: #fafbfd;
+  color: #647181;
+  font-weight: 500;
 }
 td small {
   display: block;
@@ -76,17 +78,7 @@ td small {
   font-size: var(--text-xs);
 }
 :root {
-  --bg: #f7f8f5;
-  --paper: #fff;
-  --ink: #243a32;
-  --green: #346d53;
-  --green-soft: #e9f1e9;
-  --warm: #faf0df;
-  --red: #ad5343;
   --font-sans: var(--font-jakarta), system-ui, sans-serif;
-  --muted: #5f7065;
-  --line: #dfe5dc;
-  --control-border: #bcc9bf;
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
@@ -98,21 +90,38 @@ td small {
   --space-6: 24px;
   --space-8: 32px;
   --space-10: 40px;
-  --radius-sm: 8px;
-  --radius: 12px;
-  --radius-lg: 16px;
-  --sidebar-width: 248px;
-  --page-gutter: clamp(20px, 2.5vw, 40px);
   --motion-fast: 140ms;
-  --motion-normal: 220ms;
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --shadow-sm: 0 2px 6px #243a3208;
-  --shadow-raised: 0 6px 18px #243a3212;
+  --paper: #ffffff;
+  --ink: #242a30;
+  --green: #326652;
+  --green-soft: #edf4f0;
+  --warm: #fcf5e8;
+  --red: #ab453d;
+  --muted: #626b74;
+  --line: #e5e8ec;
+  --control-border: #cbd1d8;
+  --action: #252b31;
+  --surface-soft: #f7f8fa;
+  --surface-inset: #f3f5f7;
+  --chart-accent: #4c7866;
+  --chart-comparison: #b6c5be;
+  --radius-sm: 8px;
+  --shadow-sm: 0 2px 4px #18232e05;
+  --shadow-raised: 0 6px 16px #18232e0a;
+  --motion-normal: 180ms;
+  --bg: #f6f7f9;
+  --sidebar-width: 220px;
+  --page-gutter: 28px;
+  --radius: 14px;
+  --radius-lg: 18px;
 }
 html {
   color-scheme: light;
   scroll-padding-top: 24px;
   -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  scrollbar-color: #c4cbd1 transparent;
 }
 body {
   margin: 0;
@@ -122,27 +131,29 @@ body {
   -webkit-font-smoothing: antialiased;
   font-size: var(--text-sm);
   line-height: 1.6;
+  font-weight: 400;
 }
 h1 {
   margin: 0;
-  line-height: 1.3;
-  font-weight: 700;
-  font-size: clamp(1.625rem, 2.4vw, 2rem);
-  letter-spacing: -0.035em;
   overflow-wrap: anywhere;
+  line-height: 1.3;
+  text-wrap: balance;
+  font-size: clamp(1.625rem, 2.1vw, 2rem);
+  font-weight: 650;
+  letter-spacing: -0.04em;
 }
 h2 {
   margin: 0;
-  letter-spacing: -0.35px;
-  font-weight: 650;
-  font-size: 1.25rem;
   line-height: 1.4;
+  font-size: 1.125rem;
+  letter-spacing: -0.025em;
+  font-weight: 650;
 }
 h3 {
   margin: 0;
-  font-weight: 650;
   font-size: var(--text-base);
   line-height: 1.5;
+  font-weight: 600;
 }
 label {
   display: flex;
@@ -162,48 +173,48 @@ input {
   font: inherit;
   outline-offset: 4px;
   border: 1px solid #dfe4dc;
-  background: white;
   color: var(--ink);
   min-width: 0;
   width: 100%;
   font-size: var(--text-sm);
   min-height: 44px;
-  border-color: var(--control-border);
   border-radius: var(--radius-sm);
   padding: 10px var(--space-3);
   max-width: 100%;
+  border-color: var(--control-border);
+  background: var(--paper);
 }
 textarea {
   font: inherit;
   outline-offset: 4px;
   border: 1px solid #dfe4dc;
-  background: white;
   color: var(--ink);
   min-width: 0;
   width: 100%;
   resize: vertical;
   font-size: var(--text-sm);
   min-height: 44px;
-  border-color: var(--control-border);
   border-radius: var(--radius-sm);
   padding: 10px var(--space-3);
   max-width: 100%;
+  border-color: var(--control-border);
+  background: var(--paper);
 }
 select {
   font: inherit;
   outline-offset: 4px;
   border: 1px solid #dfe4dc;
-  background: white;
   color: var(--ink);
   min-width: 0;
   width: auto;
   font-size: var(--text-sm);
   min-height: 44px;
-  border-color: var(--control-border);
   border-radius: var(--radius-sm);
   padding: 10px var(--space-3);
   max-width: 100%;
   padding-right: 28px;
+  border-color: var(--control-border);
+  background: var(--paper);
 }
 input[type="checkbox"] {
   width: 18px;
@@ -238,8 +249,23 @@ table {
   font-size: var(--text-sm);
 }
 td {
-  border-bottom: 1px solid #eef1e8;
   vertical-align: middle;
-  padding: var(--space-4);
   line-height: 1.6;
+  padding: 20px;
+  font-size: 13px;
+  border-bottom: 1px solid #edf0f3;
+}
+::selection {
+  background: #dbeae3;
+  color: #233b30;
+}
+:where(input, textarea) {
+  caret-color: var(--green);
+}
+:where(button, a, summary, [role="button"]) {
+  touch-action: manipulation;
+}
+:where(button, summary, [role="button"]) {
+  user-select: none;
+  -webkit-user-select: none;
 }
