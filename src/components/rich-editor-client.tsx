@@ -175,6 +175,17 @@ export default function RichEditorClient({
         >
           <Table2 size={16} />
         </button>
+        {editor.isActive("table") && (
+          <button
+            type="button"
+            title="Tambah baris di bawah sel aktif"
+            aria-label="Tambah baris tabel"
+            disabled={disabled || !editor.can().addRowAfter()}
+            onClick={() => editor.chain().focus().addRowAfter().run()}
+          >
+            Tambah baris
+          </button>
+        )}
         <button
           type="button"
           aria-label="Insert or edit link"

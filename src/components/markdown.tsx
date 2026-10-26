@@ -1,11 +1,12 @@
 "use client";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { tableCellBreaks } from "@/lib/table-cell-breaks";
 export function Markdown({ body }: { body: string }) {
   return (
     <div className="markdown">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, tableCellBreaks]}
         skipHtml
         components={{
           a: ({ href, children }) => (

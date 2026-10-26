@@ -964,6 +964,54 @@ test("protected Markdown rendering blocks script markup and executable links", (
     cleanup();
   }
 });
+test("table row button works on notes with cell line breaks and respects disabled state", async () => {
+  const raf = globalThis.requestAnimationFrame;
+  globalThis.requestAnimationFrame = dom.window.requestAnimationFrame.bind(
+    dom.window,
+  );
+  let saved = "";
+  const value = "| Nama | Harga |\n| --- | --- |\n| Satu<br>Dua | 20 |";
+  const { unsupportedMarkdown } = await import("../src/lib/editor-content");
+  const { Markdown } = await import("../src/components/markdown");
+  const ui = render(
+    <RichEditorClient
+      value={value}
+      label="Table note"
+      onChange={(v) => {
+        saved = v;
+      }}
+    />,
+  );
+  try {
+    const field = await ui.findByRole("textbox", { name: "Table note" });
+    const count = field.querySelectorAll("tr").length;
+    fireEvent.click(ui.getByRole("button", { name: "Tambah baris tabel" }));
+    assert.equal(field.querySelectorAll("tr").length, count + 1);
+    assert.equal(unsupportedMarkdown(saved), false);
+    ui.rerender(
+      <RichEditorClient
+        value={saved}
+        label="Table note"
+        onChange={() => {}}
+        disabled
+      />,
+    );
+    assert.equal(
+      (
+        ui.getByRole("button", {
+          name: "Tambah baris tabel",
+        }) as HTMLButtonElement
+      ).disabled,
+      true,
+    );
+    ui.rerender(<Markdown body={value} />);
+    assert.equal(ui.container.querySelector("td")?.innerHTML, "Satu<br>\nDua");
+  } finally {
+    cleanup();
+    globalThis.requestAnimationFrame = raf;
+  }
+});
+
 test("WYSIWYG replaces external template content without dirty events and disables editing during save", async () => {
   let changes = 0;
   const onChange = () => changes++;

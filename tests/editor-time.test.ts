@@ -6,6 +6,41 @@ import { dateInZone, localTimestamp, validTimezone } from "../src/lib/time";
 import { parseFilters } from "../src/lib/filters";
 import { unsupportedMarkdown } from "../src/lib/editor-content";
 import { convertTypedTable } from "../src/lib/editor-table-input";
+import { publicMarkdown } from "../src/lib/public-markdown";
+
+test("table cell line breaks render safely without accepting arbitrary HTML", () => {
+  const table = "| Nama |\n| --- |\n| Satu<br>Dua<br />Tiga |";
+  assert.equal(unsupportedMarkdown(table), false);
+  assert.match(publicMarkdown(table), /Satu<br>\s*Dua<br>\s*Tiga/);
+  for (const value of [
+    "Satu<br>Dua",
+    "| Nama |\n| --- |\n| <br onclick=alert(1)> |",
+    "| Nama |\n| --- |\n| <script>alert(1)</script> |",
+  ])
+    assert.equal(unsupportedMarkdown(value), true);
+});
+
+test("Enter inside a table cell and adding a row keep the note editable", () => {
+  const editor = new Editor({
+    extensions: editorExtensions(),
+    content: "| Nama | Harga |\n| --- | --- |\n| Trip | 20 |",
+    contentType: "markdown",
+  });
+  editor.commands.setTextSelection(4);
+  assert.equal(editor.commands.splitBlock(), true);
+  const multiline = editor.getMarkdown();
+  assert.equal(unsupportedMarkdown(multiline), false, multiline);
+  assert.equal(editor.commands.addRowAfter(), true);
+  assert.equal(unsupportedMarkdown(editor.getMarkdown()), false);
+  const reopened = new Editor({
+    extensions: editorExtensions(),
+    content: editor.getMarkdown(),
+    contentType: "markdown",
+  });
+  assert.equal(unsupportedMarkdown(reopened.getMarkdown()), false);
+  reopened.destroy();
+  editor.destroy();
+});
 
 test("typed Markdown table converts on Enter and places cursor in the empty body", () => {
   for (const sameParagraph of [false, true]) {
@@ -59,12 +94,10 @@ test("ordinary pipes and incomplete separators remain plain text", () => {
       extensions: editorExtensions(),
       content: {
         type: "doc",
-        content: value
-          .split("\n")
-          .map((text) => ({
-            type: "paragraph",
-            content: [{ type: "text", text }],
-          })),
+        content: value.split("\n").map((text) => ({
+          type: "paragraph",
+          content: [{ type: "text", text }],
+        })),
       },
     });
     editor.commands.setTextSelection(editor.state.doc.content.size - 1);

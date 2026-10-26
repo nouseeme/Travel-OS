@@ -4,9 +4,11 @@ import remarkGfm from "remark-gfm";
 import remarkRehype from "remark-rehype";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
+import { tableCellBreaks } from "./table-cell-breaks";
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm)
+  .use(tableCellBreaks)
   .use(remarkRehype)
   .use(rehypeSanitize, {
     ...defaultSchema,

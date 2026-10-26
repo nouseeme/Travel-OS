@@ -2750,6 +2750,29 @@ await test("trip board sorting and combined filters apply before pagination", as
     ids[0],
   );
   assert.equal(s.journeys[0].id, ids[0]);
+  const today = (
+    await db.query<{ day: string }>("select current_date::text as day")
+  ).rows[0].day;
+  const extra = async (name: string, start: string, end: string) =>
+    cmd("create_journey", {
+      kind: "trip",
+      name,
+      client: "Trip sorting fixture",
+      pic: admin,
+      people: [admin],
+      stage,
+      start,
+      end,
+      guests: 2,
+      quote: "100",
+    });
+  const past = await extra("Past sorting fixture", "2000-01-01", "2000-01-02");
+  const ongoing = await extra("Ongoing sorting fixture", today, today);
+  s = await snapshot("trips", f);
+  assert.equal(s.journeys[0].id, ongoing);
+  assert.equal(s.journeys[1].id, ids[0]);
+  s = await snapshot("trips", { ...f, page: "1" });
+  assert.equal(s.journeys.at(-1).id, past);
 });
 console.log(
   `Database regression: ${passed} scenarios passed (embedded PostgreSQL; hosted Auth/email/concurrency remain separate gates).`,

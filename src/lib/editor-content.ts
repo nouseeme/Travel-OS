@@ -1,6 +1,8 @@
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
+import { tableCellBreaks } from "./table-cell-breaks";
+import type { Root } from "mdast";
 const supported = new Set([
   "root",
   "paragraph",
@@ -25,11 +27,12 @@ const supported = new Set([
 ]);
 /** Protect stored Markdown that the configured editor cannot round-trip. */
 export function unsupportedMarkdown(value: string) {
-  const tree = unified().use(remarkParse).use(remarkGfm).parse(value);
-  function visit(node: {
-    type: string;
-    children?: typeof tree.children;
-  }): boolean {
+  const processor = unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(tableCellBreaks);
+  const tree = processor.runSync(processor.parse(value));
+  function visit(node: { type: string; children?: Root["children"] }): boolean {
     return (
       !supported.has(node.type) ||
       !!node.children?.some((child) => visit(child))

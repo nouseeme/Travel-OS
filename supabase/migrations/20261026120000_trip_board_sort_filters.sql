@@ -11,16 +11,16 @@ declare
       and (coalesce(filters->>'departure_to','')='' or nullif(j.data->>'start','') <= filters->>'departure_to')
     ))$predicate$;
   ordering text := $ordering$order by
-    case when view_name='trips' and coalesce(filters->>'trip_sort','nearest') in ('nearest','latest') then nullif(j.data->>'start','') is null else false end,
-    case when view_name='trips' and coalesce(filters->>'trip_sort','nearest')='nearest'
+    case when view_name='trips' and coalesce(filters->>'lifecycle','active')<>'archive' and coalesce(filters->>'trip_sort','nearest') in ('nearest','latest') then nullif(j.data->>'start','') is null else false end,
+    case when view_name='trips' and coalesce(filters->>'lifecycle','active')<>'archive' and coalesce(filters->>'trip_sort','nearest')='nearest'
       then case when coalesce(nullif(j.data->>'end',''),nullif(j.data->>'start','')) >= (current_timestamp at time zone tz)::date::text then 0 else 1 end end,
-    case when view_name='trips' and coalesce(filters->>'trip_sort','nearest')='nearest'
+    case when view_name='trips' and coalesce(filters->>'lifecycle','active')<>'archive' and coalesce(filters->>'trip_sort','nearest')='nearest'
       and coalesce(nullif(j.data->>'end',''),nullif(j.data->>'start','')) >= (current_timestamp at time zone tz)::date::text
       then j.data->>'start' end asc nulls last,
-    case when view_name='trips' and coalesce(filters->>'trip_sort','nearest') in ('nearest','latest')
+    case when view_name='trips' and coalesce(filters->>'lifecycle','active')<>'archive' and coalesce(filters->>'trip_sort','nearest') in ('nearest','latest')
       then nullif(j.data->>'start','') end desc nulls last,
-    case when view_name='trips' and filters->>'trip_sort'='name_asc' then lower(coalesce(nullif(j.data->>'name',''),j.data->>'client')) end asc,
-    case when view_name='trips' and filters->>'trip_sort'='name_desc' then lower(coalesce(nullif(j.data->>'name',''),j.data->>'client')) end desc,
+    case when view_name='trips' and coalesce(filters->>'lifecycle','active')<>'archive' and filters->>'trip_sort'='name_asc' then lower(coalesce(nullif(j.data->>'name',''),j.data->>'client')) end asc,
+    case when view_name='trips' and coalesce(filters->>'lifecycle','active')<>'archive' and filters->>'trip_sort'='name_desc' then lower(coalesce(nullif(j.data->>'name',''),j.data->>'client')) end desc,
     j.created_at desc, j.id
     limit 50 offset$ordering$;
 begin
