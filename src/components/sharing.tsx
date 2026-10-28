@@ -12,6 +12,7 @@ import { localTimestamp } from "@/lib/time";
 import { Toast } from "./toast";
 type Link = {
   id: string;
+  url: string;
   version: number;
   permissions: TripPermissions;
   expires_at: string;
@@ -37,6 +38,7 @@ export function Sharing({ j }: { j: Journey }) {
         body: JSON.stringify({
           action,
           trip: j.id,
+          title: j.name,
           version: link?.version,
           permissions,
           link: link?.id,
@@ -45,8 +47,10 @@ export function Sharing({ j }: { j: Journey }) {
       });
       const d = await res.json();
       if (!res.ok) throw Error(d.error);
-      if (action === "list") setLinks(d.links);
+      if (action === "list")
+        setLinks(d.links.filter((l: Link) => !l.revoked_at));
       else {
+        if (action === "revoke" || action === "regenerate") setUrl("");
         if (d.url) setUrl(d.url);
         setNotice(
           action === "revoke"
@@ -62,6 +66,7 @@ export function Sharing({ j }: { j: Journey }) {
     }
   }
   useEffect(() => {
+    setUrl("");
     void call("list");
   }, [j.id]);
   return (
@@ -139,7 +144,7 @@ export function Sharing({ j }: { j: Journey }) {
       {url && (
         <div className="doc-share-created">
           <label>
-            Link baru · salin sekarang
+            Link berbagi
             <input readOnly value={url} onFocus={(e) => e.target.select()} />
           </label>
           <Button
@@ -184,6 +189,24 @@ export function Sharing({ j }: { j: Journey }) {
           </div>
           {!l.revoked_at && (
             <div className="row-actions">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy || new Date(l.expires_at) <= new Date()}
+                onClick={async () => {
+                  setUrl(l.url);
+                  try {
+                    await navigator.clipboard.writeText(l.url);
+                    setNotice("Link disalin.");
+                  } catch {
+                    setError(
+                      "Salin link secara manual dari kolom Link berbagi.",
+                    );
+                  }
+                }}
+              >
+                Copy link
+              </Button>
               <Button
                 size="sm"
                 variant="outline"

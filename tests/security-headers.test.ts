@@ -32,6 +32,17 @@ test("document policy has a unique nonce and forwards it for Next rendering", as
       false,
       "static share handler owns its script-free policy",
     );
+    const short = await proxy(
+      new NextRequest("http://localhost/s/doc-invalid"),
+    );
+    assert.equal(short.headers.has("content-security-policy"), false);
+    assert.equal(short.headers.get("referrer-policy"), "no-referrer");
+    assert.equal(short.headers.get("cache-control"), "private, no-store");
+    const trip = await proxy(
+      new NextRequest("http://localhost/t/trip-invalid"),
+    );
+    assert.equal(trip.headers.get("referrer-policy"), "no-referrer");
+    assert.ok(trip.headers.has("content-security-policy"));
   } finally {
     if (old === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_URL;
     else process.env.NEXT_PUBLIC_SUPABASE_URL = old;

@@ -4,8 +4,9 @@ import { z } from "zod";
 import { body, failure, originCheck } from "@/lib/http";
 import { AppError, validateContent, money, date } from "@/lib/domain";
 import { dbError } from "@/lib/supabase/server";
+import { shareTokenPattern } from "@/lib/share-token";
 export const dynamic = "force-dynamic";
-const tokenSchema = z.string().regex(/^[a-f0-9]{64}$/);
+const tokenSchema = z.string().regex(shareTokenPattern);
 function client() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

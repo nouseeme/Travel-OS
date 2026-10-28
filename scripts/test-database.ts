@@ -1820,7 +1820,7 @@ let liveLink = "",
 async function manageLive(
   action: string,
   token: string | null,
-  permissions = livePermissions,
+  permissions: Record<string, string> = livePermissions,
   link: string | null = null,
   version: number | null = null,
 ) {
@@ -2149,6 +2149,26 @@ await test("live permissions downgrade, revoke and expired links immediately den
   );
   await asUser(admin);
   await manageLive("revoke", null, livePermissions, liveLink, 2);
+  assert.ok(
+    !(await manageLive("list", null)).links.some((l: any) => l.id === liveLink),
+  );
+  await db.exec("reset role");
+  assert.equal(
+    (
+      await db.query("select id from private.trip_access_links where id=$1", [
+        liveLink,
+      ])
+    ).rows.length,
+    0,
+  );
+  const retained = (
+    await db.query<{ link_id: string | null }>(
+      "select link_id from private.trip_submissions where id=$1",
+      [requestId],
+    )
+  ).rows;
+  assert.equal(retained.length, 1);
+  assert.equal(retained[0].link_id, null);
   await anonymous();
   await assert.rejects(liveRead());
   await db.exec("reset role");
@@ -2774,9 +2794,111 @@ await test("trip board sorting and combined filters apply before pagination", as
   s = await snapshot("trips", { ...f, page: "1" });
   assert.equal(s.journeys.at(-1).id, past);
 });
+await test("short share capabilities can be recovered, copied, edited and permanently revoked without losing history", async () => {
+  await asUser(admin);
+  // The surviving viewer link was created using a legacy hash-only URL.
+  const legacy = (await manageLive("list", null)).links.find(
+    (l: any) => l.id && l.expires_at && l.share_token === viewerToken,
+  );
+  assert.ok(legacy);
+  const token = "bandung-2026-1234567890123456789012";
+  const created = await manageLive("create", token, {
+    overview: "view",
+    contacts: "edit",
+  });
+  const list = await manageLive("list", null);
+  assert.equal(
+    list.links.find((l: any) => l.id === created.id).share_token,
+    token,
+  );
+  assert.equal(
+    list.links.find((l: any) => l.id === created.id).token_hash,
+    undefined,
+  );
+  await anonymous();
+  const shared = await liveRead(token);
+  assert.equal(shared.journey.id, trip);
+  assert.ok(!JSON.stringify(shared).includes("share_token"));
+  await assert.rejects(manageLive("list", null));
+  await assert.rejects(
+    db.query("select share_token from private.trip_access_links"),
+  );
+  await liveWrite(
+    "content",
+    { contacts: shared.journey.contacts },
+    trip,
+    shared.journey.version,
+    token,
+  );
+  await asUser(admin);
+  const nextToken = "trip-abcdefghijklmnopqrstuv";
+  const next = await manageLive(
+    "regenerate",
+    nextToken,
+    { overview: "view" },
+    created.id,
+    1,
+  );
+  assert.ok(
+    !(await manageLive("list", null)).links.some(
+      (l: any) => l.id === created.id,
+    ),
+  );
+  await anonymous();
+  await assert.rejects(liveRead(token));
+  await liveRead(nextToken);
+  await asUser(admin);
+  await manageLive("revoke", null, { overview: "view" }, next.id, 1);
+  await anonymous();
+  await assert.rejects(liveRead(nextToken));
+
+  await asUser(admin);
+  const doc = (await snapshot("docs")).documents[0];
+  for (const kind of ["doc", "contacts"]) {
+    const short = `${kind}-1234567890123456789012`;
+    const manage = async (a: string, id: string | null = null) =>
+      (
+        await db.query<{ r: any }>(
+          kind === "doc"
+            ? "select public.app_doc_share_manage($1,$2,$3,$4,$5,7) r"
+            : "select public.app_contacts_share_manage($1,$2,$3,7) r",
+          kind === "doc" ? [a, doc.id, id, doc.version, short] : [a, id, short],
+        )
+      ).rows[0].r;
+    const link = await manage("create");
+    assert.equal(
+      (await manage("list")).links.find((l: any) => l.id === link.id)
+        .share_token,
+      short,
+    );
+    await anonymous();
+    assert.ok(
+      (
+        await db.query<{ r: any }>("select public.app_share_read($1) r", [
+          short,
+        ])
+      ).rows[0].r,
+    );
+    await assert.rejects(manage("list"));
+    await asUser(admin);
+    await manage("revoke", link.id);
+    assert.ok(!(await manage("list")).links.some((l: any) => l.id === link.id));
+    await anonymous();
+    assert.equal(
+      (
+        await db.query<{ r: any }>("select public.app_share_read($1) r", [
+          short,
+        ])
+      ).rows[0].r,
+      null,
+    );
+    await asUser(admin);
+  }
+});
 console.log(
   `Database regression: ${passed} scenarios passed (embedded PostgreSQL; hosted Auth/email/concurrency remain separate gates).`,
 );
 await db.close();
 await import("./test-refinements-migration");
 await import("./test-contacts-migration");
+await import("./test-share-migration");

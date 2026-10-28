@@ -6,7 +6,8 @@ export async function proxy(request: NextRequest) {
   // Static shared documents supply their own stricter script-free policy.
   const document =
     !request.nextUrl.pathname.startsWith("/api/") &&
-    !request.nextUrl.pathname.startsWith("/share/");
+    !request.nextUrl.pathname.startsWith("/share/") &&
+    !request.nextUrl.pathname.startsWith("/s/");
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const policy = contentSecurityPolicy(
     nonce,
@@ -24,6 +25,8 @@ export async function proxy(request: NextRequest) {
   let response = next();
   if (
     !request.nextUrl.pathname.startsWith("/share/") &&
+    !request.nextUrl.pathname.startsWith("/s/") &&
+    !request.nextUrl.pathname.startsWith("/t/") &&
     !request.nextUrl.pathname.startsWith("/shared-trip/") &&
     !request.nextUrl.pathname.startsWith("/api/shared-trip") &&
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
@@ -50,7 +53,7 @@ export async function proxy(request: NextRequest) {
   response.headers.set("Cache-Control", "private, no-store");
   if (document) response.headers.set("Content-Security-Policy", policy);
   if (
-    ["/share/", "/shared-trip/", "/api/shared-trip"].some((p) =>
+    ["/s/", "/t/", "/share/", "/shared-trip/", "/api/shared-trip"].some((p) =>
       request.nextUrl.pathname.startsWith(p),
     )
   )

@@ -56,6 +56,8 @@ const { Board } = await import("../src/components/board");
 const { MoneyInput } = await import("../src/components/money-input");
 const { Ledger } = await import("../src/components/dashboard");
 const { InternalDocs } = await import("../src/components/internal-docs");
+const { Sharing } = await import("../src/components/sharing");
+const { DocSharing } = await import("../src/components/doc-sharing");
 const { Contacts } = await import("../src/components/detail");
 const { InternalContacts } =
   await import("../src/components/internal-contacts");
@@ -1265,5 +1267,97 @@ test("transaction history includes original values and actual changed fields", a
   } finally {
     cleanup();
     globalThis.fetch = originalFetch;
+  }
+});
+
+test("existing sharing links copy after remount and revoke disappears for Trip, Docs and Contacts", async () => {
+  const originalFetch = globalThis.fetch;
+  const oldConfirm = globalThis.confirm;
+  globalThis.confirm = () => true;
+  const copied: string[] = [];
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: {
+      writeText: async (value: string) => {
+        copied.push(value);
+      },
+    },
+  });
+  try {
+    for (const kind of ["trip", "doc", "contacts"]) {
+      const actions: string[] = [];
+      let revoked = false;
+      const url = `http://127.0.0.1:3000/${kind === "trip" ? "t" : "s"}/${kind}-1234567890123456789012`;
+      const link = {
+        id: randomUUID(),
+        version: 1,
+        url,
+        expires_at: "2099-01-01T00:00:00Z",
+        revoked_at: null,
+        permissions: { overview: "view" },
+      };
+      globalThis.fetch = async (_url, options) => {
+        const command = JSON.parse(String(options?.body));
+        actions.push(command.action);
+        if (command.action === "revoke") revoked = true;
+        return new Response(
+          JSON.stringify({
+            links: revoked
+              ? []
+              : [link, { ...link, id: randomUUID(), revoked_at: "2026-10-28" }],
+          }),
+          { status: 200 },
+        );
+      };
+      const component = () =>
+        kind === "trip" ? (
+          <Sharing j={{ ...journey, kind: "trip" }} />
+        ) : (
+          <DocSharing
+            directory={kind === "contacts"}
+            doc={{
+              id: "doc",
+              title: "Saved doc",
+              version: 1,
+              date: "2026-10-28",
+              creator: "admin",
+              category: "General",
+              body: "",
+              created_at: "2026-10-28",
+              updated_at: "2026-10-28",
+            }}
+          />
+        );
+      let ui = render(component());
+      await waitFor(() =>
+        assert.equal(
+          ui.getAllByRole("button", { name: "Copy link" }).length,
+          1,
+        ),
+      );
+      cleanup();
+      ui = render(component());
+      await waitFor(() =>
+        assert.ok(ui.getByRole("button", { name: "Copy link" })),
+      );
+      await act(async () =>
+        fireEvent.click(ui.getByRole("button", { name: "Copy link" })),
+      );
+      assert.equal(copied.at(-1), url);
+      assert.deepEqual(actions, ["list", "list"]);
+      await act(async () =>
+        fireEvent.click(ui.getByRole("button", { name: "Revoke" })),
+      );
+      await waitFor(() =>
+        assert.equal(ui.queryByRole("button", { name: "Copy link" }), null),
+      );
+      assert.equal(ui.queryByDisplayValue(url), null);
+      cleanup();
+    }
+  } finally {
+    cleanup();
+    globalThis.fetch = originalFetch;
+    globalThis.confirm = oldConfirm;
+    Reflect.deleteProperty(navigator, "clipboard");
   }
 });

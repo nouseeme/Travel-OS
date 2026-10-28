@@ -4,6 +4,7 @@ import { z } from "zod";
 import { body, failure, originCheck } from "@/lib/http";
 import { verifiedClient, dbError } from "@/lib/supabase/server";
 import { AppError } from "@/lib/domain";
+import { shareSlug } from "@/lib/share-token";
 export const dynamic = "force-dynamic";
 const schema = z.object({
   action: z.enum([
@@ -23,6 +24,7 @@ const schema = z.object({
   link: z.uuid().optional(),
   version: z.number().int().positive().optional(),
   days: z.number().int().min(1).max(30).default(7),
+  title: z.string().max(200).default(""),
   selection: z
     .object({
       title: z.string().max(200).default(""),
@@ -47,7 +49,7 @@ export async function POST(request: Request) {
       throw new AppError("Pilih Trip atau dokumen.");
     const client = await verifiedClient();
     const token = ["create", "regenerate"].includes(d.action)
-      ? randomBytes(32).toString("hex")
+      ? `${shareSlug(d.title, d.directory ? "contacts" : d.doc ? "doc" : "trip")}-${randomBytes(16).toString("base64url")}`
       : null;
     const { data, error } = await client.rpc(
       d.directory
@@ -66,9 +68,28 @@ export async function POST(request: Request) {
       },
     );
     if (error) dbError(error);
+    const base = process.env.APP_URL || new URL(request.url).origin;
+    const path = d.doc || d.directory ? "s" : "t";
+    const shareUrl = (value: string) => `${base}/${path}/${value}`;
+    const { links, ...result } = data;
     return NextResponse.json(
       {
-        ...data,
+        ...result,
+        ...(Array.isArray(links)
+          ? {
+              links: links
+                .filter((l: { revoked_at: string | null }) => !l.revoked_at)
+                .map(
+                  ({
+                    share_token,
+                    ...link
+                  }: {
+                    share_token: string;
+                    revoked_at: string | null;
+                  }) => ({ ...link, url: shareUrl(share_token) }),
+                ),
+            }
+          : {}),
         ...(d.action === "list"
           ? {
               enabled: data.enabled,
@@ -76,7 +97,7 @@ export async function POST(request: Request) {
           : {}),
         ...(token
           ? {
-              url: `${process.env.APP_URL || new URL(request.url).origin}/${d.doc || d.directory ? "share" : "shared-trip"}/${token}`,
+              url: shareUrl(token),
             }
           : {}),
       },

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { publicMarkdown } from "@/lib/public-markdown";
+import { shareTokenPattern } from "@/lib/share-token";
 export const dynamic = "force-dynamic";
 const escape = (s: unknown) =>
   String(s || "").replace(
@@ -17,7 +18,7 @@ export async function GET(
   const { token } = await context.params;
   let payload: any = null;
   if (
-    /^[a-f0-9]{64}$/.test(token) &&
+    shareTokenPattern.test(token) &&
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
   ) {

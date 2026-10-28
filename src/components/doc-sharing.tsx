@@ -5,7 +5,12 @@ import type { InternalDoc } from "@/lib/model";
 import { Button } from "./ui/button";
 import { Markdown } from "./markdown";
 import { localTimestamp } from "@/lib/time";
-type Link = { id: string; expires_at: string; revoked_at: string | null };
+type Link = {
+  id: string;
+  url: string;
+  expires_at: string;
+  revoked_at: string | null;
+};
 export function DocSharing({
   doc,
   directory = false,
@@ -30,6 +35,7 @@ export function DocSharing({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action,
+          title: directory ? "Contacts" : doc.title,
           ...(directory ? { directory: true } : { doc: doc.id }),
           link,
           version: doc.version,
@@ -38,8 +44,10 @@ export function DocSharing({
       });
       const data = await res.json();
       if (!res.ok) throw Error(data.error);
-      if (action === "list") setLinks(data.links);
+      if (action === "list")
+        setLinks(data.links.filter((l: Link) => !l.revoked_at));
       else {
+        if (action === "revoke" || action === "regenerate") setUrl("");
         if (data.url) setUrl(data.url);
         await call("list");
       }
@@ -50,6 +58,7 @@ export function DocSharing({
     }
   }
   useEffect(() => {
+    setUrl("");
     void call("list");
     setPreview(false);
   }, [doc.id, doc.version]);
@@ -114,7 +123,13 @@ export function DocSharing({
           <input readOnly value={url} onFocus={(e) => e.target.select()} />
           <Button
             variant="outline"
-            onClick={() => navigator.clipboard.writeText(url)}
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(url);
+              } catch {
+                setError("Salin link secara manual dari kolom View link.");
+              }
+            }}
           >
             Copy link
           </Button>
@@ -135,6 +150,21 @@ export function DocSharing({
           </div>
           {!l.revoked_at && (
             <div className="doc-share-link-actions">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy || new Date(l.expires_at) <= new Date()}
+                onClick={async () => {
+                  setUrl(l.url);
+                  try {
+                    await navigator.clipboard.writeText(l.url);
+                  } catch {
+                    setError("Salin link secara manual dari kolom View link.");
+                  }
+                }}
+              >
+                Copy link
+              </Button>
               <Button
                 size="sm"
                 variant="outline"
