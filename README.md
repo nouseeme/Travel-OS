@@ -58,9 +58,9 @@ Both remain useful for general planning. Travel OS fits this connected workflow 
 
 | Area | Implemented behavior | Operational value |
 | --- | --- | --- |
-| **Home** | Assigned → Doing → Done tasks; deadline warnings; date/context filters; personal unfinished count; admin team filters; Load More | Reveals the next action across leads, Trips, and internal work. |
+| **Home** | Assigned → Doing → Done tasks; personal manual card order; deadline warnings; date/context filters; personal unfinished count; admin team filters; Load More | Reveals the next action across leads, Trips, and internal work. |
 | **Sales CRM** | Drafts → Contacted → Prospect defaults; drag/menu moves; PIC, fields, notes, contacts, itinerary drafts; Lost/archive/restore; stage analytics | Keeps follow-up and booking context together. Stage movement never creates a Trip. |
-| **Trips** | Planned → Confirmed → In Progress defaults; automatic H−2 advancement; completed/cancelled archive; board/calendar; stage configuration; ordered itinerary days/items | Turns a sale into a delivery plan. Calendar ranges include both start and end dates. |
+| **Trips** | Planned → Confirmed → In Progress defaults; departure/name sorting and personal manual card order; automatic H−2 advancement; completed/cancelled archive; board/calendar; stage configuration; ordered itinerary days/items | Turns a sale into a delivery plan. Calendar ranges include both start and end dates. |
 | **Finance** | IDR transactions; filters/pagination; overall/per-Trip cash results; month/quarter comparison charts; category budgets; correction requests; admin approval/void; CSV export | Supports cash control and traceable changes without treating plans as money received. |
 | **Internal Docs** | Searchable table; column filters/sorting; Markdown/WYSIWYG; templates; Edit/Save/Cancel; selected/bulk deletion; view-only snapshots | Keeps instructions reusable. Template changes do not rewrite existing documents. |
 | **Contacts** | Directory from accessible leads, Trips, and internal contacts; search/source links; reuse picker; linked edits; selected deletion | Reduces repeated entry while preserving identity and permission-aware context. |
@@ -75,7 +75,9 @@ Docs/itineraries open in view mode; failed saves retain drafts. Drag interaction
 - **IDR only, up to two decimals.** Decimal strings, integer hundredths, and PostgreSQL numeric arithmetic preserve precision. Formula-protected CSV exports cover all matching rows.
 - **Time contexts:** UTC timestamps display in browser time; date-only fields retain their date. Workspace time (Asia/Jakarta by default) governs deadlines and H−2: Confirmed Trips advance two calendar days before departure.
 - **Scoped public access:** enabled tabs expose their content; Notes default to Hidden. Guests see non-cancelled Public tasks and their link's Finance submissions, never the ledger/budgets/totals. A Finance editor with Trip access can approve a submission into cash once, atomically.
-- **Sharing modes:** live Trip permissions take effect immediately; document snapshots require republication. Tokens are hashed, expiring, and revocable. `SHARING_ENABLED` and the workspace gate control legacy static Trip snapshots, not live links or Docs snapshots.
+- **Sharing modes:** live Trip permissions take effect immediately; document/Contacts snapshots require republication. Public URLs use a title slug and a 22-character random suffix. Authorized editors can copy an existing active link again. Private sharing tables hold both a token hash and a recoverable capability; these URLs are credentials and must not appear in logs or audit metadata. Legacy URLs remain valid alongside short aliases until expiry or revocation. `SHARING_ENABLED` and the workspace gate control legacy static Trip snapshots, not live links or Docs snapshots.
+- **Revocation:** revoked sharing rows and obsolete snapshots are permanently removed. Finance submissions remain reviewable with their link reference cleared; posted transactions and audit events remain intact. Revoked links disappear from sharing panels. Login/invitation records and their one-time authentication behavior are outside this cleanup.
+- **Kanban order:** cards can be placed above/below another card or moved between groups. Trips support nearest/farthest departure, name A–Z/Z–A, and Manual. Dragging activates Manual; each user's saved order is restored on fresh requests. Filtering keeps saved IDs outside the visible subset; the reordered visible subset is placed ahead of those remaining IDs. Cross-group status changes and order saves commit together, with the original permissions and version checks.
 
 ## Stack and architecture
 
@@ -84,7 +86,7 @@ Docs/itineraries open in view mode; failed saves retain drafts. Drag interaction
 | Application | Next.js **16.4.0**, React **19.3.0**, TypeScript **5.9.3** | App Router, server rendering, route handlers, typed contracts. |
 | Backend | Supabase Auth, PostgreSQL, `supabase-js`, `@supabase/ssr` | Cookie sessions, persistence, RLS, audited commands. |
 | UI | Modular CSS, Tailwind CSS 4 tooling, Radix Dialog, Lucide, Plus Jakarta Sans | Shared styling, dialogs, icons, typography. |
-| Interaction | Tiptap 3, dnd-kit, Recharts | Rich text, boards/itineraries, analytical charts. |
+| Interaction | BlockNote 0.56, dnd-kit, Recharts | Rich text, boards/itineraries, analytical charts. |
 | Validation/content | Zod, react-markdown, unified/remark/rehype | Input contracts and sanitized Markdown. |
 | Verification | Node test runner via tsx, Testing Library, jsdom, PGlite | Unit/component and executable PostgreSQL checks. |
 | Operations | Supabase Edge Function, PostgreSQL Cron; optional Vercel hosting | Invitations, scheduled transitions, application hosting. |
@@ -157,7 +159,9 @@ npm run build
 
 `db:test` checks migrations, grants/RLS, isolation, conversion, conflicts, cash, approvals, and sharing in ephemeral PGlite, without hosted writes. `node --import tsx scripts/test-refinements-migration.ts` checks historical data preservation. `npm run hosted:test` uses your configured project; `scripts/verify-http.ts` checks a running production server. Embedded checks do not establish hosted Auth, browser acceptance, or performance.
 
-**Documentation-pass check (14 October 2026):** README links and publication exclusions passed; `npm test` passed 46 of 50 tests. Two Finance render tests failed because `SelectionTable` was undefined; Contacts/Docs had two UI expectation failures. These application issues remain release blockers. Build/database suites were not rerun in this documentation pass.
+**Latest local feature verification (28 October 2026):** 60 application tests, 62 database scenarios, populated-data migration checks, type checking, and a Webpack production build passed. Sorting, vertical drag, and moving into an empty group were exercised with desktop pointer/keyboard in an isolated browser preview. A 390px viewport check confirmed board scrolling without page overflow; physical touch remains unverified. These results supersede the failed 14 October documentation-pass results and do not establish production deployment. Next.js 16.4.0 still reports a known security vulnerability and needs a separate upgrade.
+
+See [migration and release procedure](MIGRATIONS.md) for dependency order, preflight checks, preservation guarantees, verification, and recovery limits. Production migration history must be read from the intended project before applying anything; a committed file is not evidence that it has been applied.
 
 Remaining release work includes multi-account/browser acceptance, independent-connection races, deployment cache/log review, representative load tests, backup restoration, and monitoring. Later scope includes SSO/custom roles, recurring/dependent tasks, forecasting/custom fields, resource scheduling, attachments, accounting integrations, and a layout builder. The app is single-workspace oriented and does not provide SaaS tenant provisioning or full accounting.
 
@@ -167,6 +171,8 @@ Remaining release work includes multi-account/browser acceptance, independent-co
 - [`src/components`](src/components): screens, editors, charts, shared controls.
 - [`src/lib`](src/lib): domain contracts, money/time logic, validation, backend helpers.
 - [`supabase`](supabase): migrations, minimal seed, invitation function, generic admin bootstrap.
+- [`MIGRATIONS.md`](MIGRATIONS.md): safe rollout procedure for sharing and Kanban changes.
+- [`DESIGN.md`](DESIGN.md): authoritative visual direction and tokens; `.impeccable/design.json` extends it with component examples and metadata. Run `npm run design:sync` after changing that design source and `npm run design:check` to detect narrative/token drift. Sync preserves the design document and UI code.
 - [`tests`](tests) and [`scripts`](scripts): regression suites and setup/verification tools.
 
 This README is the public project guide. Local PRDs, setup histories, audits, screenshots, reset tooling, and test transcripts belong under ignored `.local/`; credentials and generated output are excluded by [`.gitignore`](.gitignore). No redistribution license is currently supplied.

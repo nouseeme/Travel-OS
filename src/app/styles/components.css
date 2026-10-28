@@ -178,6 +178,23 @@
   z-index: 20;
   position: relative;
 }
+.board-card.drop-before::before,
+.board-card.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--green);
+  pointer-events: none;
+}
+.board-card.drop-before::before {
+  top: -7px;
+}
+.board-card.drop-after::after {
+  bottom: -7px;
+}
 .drop-active {
   outline: 2px dashed #96b498;
   background: #ebf1e4;

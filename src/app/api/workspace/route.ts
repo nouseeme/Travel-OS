@@ -22,6 +22,7 @@ const commandSchema = z.object({
     }, "Timezone tidak valid.")
     .default("UTC"),
   action: z.enum([
+    "board_move",
     "save_help_access",
     "edit_contact",
     "bulk_action",
@@ -109,6 +110,14 @@ export async function POST(request: Request) {
   try {
     originCheck(request);
     const command = commandSchema.parse(await body(request));
+    if (command.action === "board_move")
+      z.object({
+        board: z.enum(["tasks", "sales", "trips"]),
+        column: z.string().min(1).max(100),
+        order: z.array(z.uuid()).min(1).max(150),
+      })
+        .strict()
+        .parse(command.data);
     if (command.action === "save_help_access")
       z.object({ public: z.boolean() }).strict().parse(command.data);
     if (command.action === "content") validateContent(command.data || {});

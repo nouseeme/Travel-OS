@@ -163,3 +163,99 @@ test("shared Trip refresh deduplicates focus, cancels old tokens and aborts on u
     globalThis.fetch = original;
   }
 });
+
+test("Trip Kanban sorting reaches the request and saved manual order survives a fresh dashboard", async () => {
+  const original = globalThis.fetch;
+  const urls: string[] = [];
+  const rows = ["Zulu", "Alpha"].map((name, i) => ({
+    id: `trip-${i}`,
+    version: 1,
+    created_at: "2026-10-28",
+    updated_at: "2026-10-28",
+    kind: "trip",
+    name,
+    client: name,
+    stage: "Planned",
+    lifecycle: "active",
+    start: `2100-01-0${i + 1}`,
+    end: `2100-01-0${i + 1}`,
+    trip_type: "Leisure",
+    guests: 2,
+    pic: "member",
+    people: ["member"],
+    notes: [],
+    contacts: [],
+    days: [],
+  }));
+  const data = {
+    ...snapshot,
+    user: {
+      ...snapshot.user,
+      privileges: {
+        sales: "none",
+        trips: "edit",
+        finance: "none",
+        docs: "none",
+      },
+    },
+    journeys: rows,
+    count: 2,
+    tripView: "board",
+    boardOrders: { trips: { Planned: ["trip-0", "trip-1"] } },
+  };
+  globalThis.fetch = async (url) => {
+    urls.push(String(url));
+    return Response.json(data);
+  };
+  const router = {
+    back() {},
+    forward() {},
+    refresh() {},
+    push() {},
+    prefetch() {},
+    replace() {},
+    bfcacheId: "test",
+  };
+  try {
+    const ui = render(
+      <AppRouterContext.Provider value={router}>
+        <PathnameContext.Provider value="/trips">
+          <Dashboard />
+        </PathnameContext.Provider>
+      </AppRouterContext.Provider>,
+    );
+    await waitFor(() =>
+      assert.ok(ui.getByRole("combobox", { name: "Urutkan trip" })),
+    );
+    assert.equal(
+      (ui.getByRole("combobox", { name: "Urutkan trip" }) as HTMLSelectElement)
+        .value,
+      "manual",
+    );
+    const names = () =>
+      [...ui.container.querySelectorAll(".card-title")].map(
+        (el) => el.textContent,
+      );
+    assert.deepEqual(names(), ["Zulu", "Alpha"]);
+    fireEvent.change(ui.getByRole("combobox", { name: "Urutkan trip" }), {
+      target: { value: "name_asc" },
+    });
+    await waitFor(() =>
+      assert.ok(
+        urls.some(
+          (url) =>
+            new URL(url, "http://local").searchParams.get("trip_sort") ===
+            "name_asc",
+        ),
+      ),
+    );
+    assert.deepEqual(names(), ["Alpha", "Zulu"]);
+    fireEvent.change(ui.getByRole("combobox", { name: "Urutkan trip" }), {
+      target: { value: "name_desc" },
+    });
+    await waitFor(() => assert.deepEqual(names(), ["Zulu", "Alpha"]));
+  } finally {
+    cleanup();
+    globalThis.fetch = original;
+  }
+});

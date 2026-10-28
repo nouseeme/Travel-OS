@@ -2,7 +2,9 @@ import { z } from "zod";
 import { date, AppError } from "./domain";
 import { validTimezone } from "./time";
 export const filterSchema = z.object({
-  trip_sort: z.enum(["nearest", "latest", "name_asc", "name_desc"]).optional(),
+  trip_sort: z
+    .enum(["manual", "nearest", "latest", "name_asc", "name_desc"])
+    .optional(),
   trip_stage: z.string().max(100).optional(),
   departure_from: z.string().optional(),
   departure_to: z.string().optional(),

@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "design:sync": "tsx scripts/sync-design-docs.ts",
+    "design:check": "tsx scripts/sync-design-docs.ts --check",
     "dev": "next dev --hostname 127.0.0.1",
     "build": "next build",
     "start": "next start --hostname 127.0.0.1",

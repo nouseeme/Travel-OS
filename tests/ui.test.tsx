@@ -1361,3 +1361,34 @@ test("existing sharing links copy after remount and revoke disappears for Trip, 
     Reflect.deleteProperty(navigator, "clipboard");
   }
 });
+
+test("Kanban applies selected name sorting even when the snapshot arrives in another order", () => {
+  const rows = ["Zulu trip", "Alpha trip"].map((name) => ({
+    ...journey,
+    id: randomUUID(),
+    name,
+    kind: "trip" as const,
+    stage: "Planned",
+  }));
+  const props = {
+    columns: ["Planned"],
+    mode: "journeys" as const,
+    s: { ...snapshot, journeys: rows },
+    onCommand: async () => true,
+    onEdit: () => {},
+    onNavigate: () => {},
+    onAdd: () => {},
+  };
+  const ui = render(<Board {...props} sort="name_asc" />);
+  try {
+    const names = () =>
+      [...ui.container.querySelectorAll(".card-title")].map(
+        (el) => el.textContent,
+      );
+    assert.deepEqual(names(), ["Alpha trip", "Zulu trip"]);
+    ui.rerender(<Board {...props} sort="name_desc" />);
+    assert.deepEqual(names(), ["Zulu trip", "Alpha trip"]);
+  } finally {
+    cleanup();
+  }
+});

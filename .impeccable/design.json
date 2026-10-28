@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-26T13:30:33.571Z",
+  "generatedAt": "2026-10-28T09:20:24.869Z",
   "title": "Design System: travelOS · Egimu Travel",
   "extensions": {
     "colorMeta": {
@@ -461,7 +461,7 @@
   ],
   "narrative": {
     "northStar": "A calm travel desk",
-    "overview": "The workspace presents operational information on a cool neutral canvas with white work surfaces, charcoal actions, and quiet semantic color. A floating labelled navigation panel, open columns, grouped facts, and shared metric strips make context and work easy to skim. Plus Jakarta Sans supplies both headings and working text.\n\nThe visual system describes the implemented October 26, 2026 redesign. Preserve travelOS, Egimu Travel, and the existing brand image at `public/brand/egimu-logo.jpg`. Existing routes, actions, forms, permission boundaries, financial meanings, and recovery behavior remain authoritative. See PRODUCT.md for product constraints and the surface brief for the approved direction; this document records reusable visual rules.\n\nHome uses three Kanban columns with compact task items, not a task table. Five displayed fields: title, note, due date, source, status. Task padding12px/radius8px; journey cards padding14px/radius10px. Existing interaction handlers remain.\n\nPublic Share Trip: centered1080px shell,24px outer padding, branded white header, horizontally scrollable tabs, clear published facts, flat itinerary/Notes and consistent modal fields. Phones use12px outer gutters. No private stage IDs are displayed.\n\nConsolas, monospace remains reserved for the existing raw Markdown source field; UI uses Plus Jakarta Sans.",
+    "overview": "The workspace presents operational information on a cool neutral canvas with white work surfaces, charcoal actions, and quiet semantic color. A floating labelled navigation panel, open columns, grouped facts, and shared metric strips make context and work easy to skim. Plus Jakarta Sans supplies both headings and working text.\n\nThe visual system describes the implemented October 26, 2026 redesign. Preserve travelOS, Egimu Travel, and the existing brand image at `public/brand/egimu-logo.jpg`. Existing routes, actions, forms, permission boundaries, financial meanings, and recovery behavior remain authoritative. See PRODUCT.md for product constraints and the surface brief for the approved direction; this document records reusable visual rules.",
     "keyCharacteristics": [
       "Cool neutral canvas and white work surfaces.",
       "Charcoal actions with restrained semantic sage, blue, and amber.",

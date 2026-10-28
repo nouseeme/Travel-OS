@@ -2793,6 +2793,164 @@ await test("trip board sorting and combined filters apply before pagination", as
   assert.equal(s.journeys[1].id, ids[0]);
   s = await snapshot("trips", { ...f, page: "1" });
   assert.equal(s.journeys.at(-1).id, past);
+  await cmd(
+    "board_move",
+    { board: "trips", column: stage, order: [ids[54], ids[0]] },
+    ids[54],
+    1,
+  );
+  s = await snapshot("trips", { ...f, trip_sort: "manual" });
+  assert.deepEqual(
+    s.journeys.slice(0, 2).map((j: any) => j.id),
+    [ids[54], ids[0]],
+  );
+  assert.equal(s.journeys.length, 50, "manual order applies before pagination");
+  assert.deepEqual(s.boardOrders.trips[stage], [ids[54], ids[0]]);
+  assert.equal(
+    (await snapshot("trips", { ...f, trip_sort: "name_asc" })).journeys[0].id,
+    ongoing,
+  );
+  await cmd(
+    "board_move",
+    { board: "trips", column: stage, order: [ids[1], ids[54]] },
+    ids[1],
+    1,
+  );
+  assert.deepEqual(
+    (await snapshot("trips")).boardOrders.trips[stage],
+    [ids[1], ids[54], ids[0]],
+    "filtered reorder preserves other saved IDs",
+  );
+  assert.equal(
+    (await snapshot("trips", f)).journeys[0].id,
+    ids[1],
+    "fresh requests default to the saved manual order",
+  );
+  await assert.rejects(
+    cmd(
+      "board_move",
+      { board: "trips", column: stage, order: [ids[0], ids[0]] },
+      ids[0],
+      1,
+    ),
+  );
+  await assert.rejects(
+    cmd(
+      "board_move",
+      { board: "trips", column: stage, order: [ids[0]] },
+      ids[0],
+      999,
+    ),
+  );
+  const targetStage = s.tripStages.find(
+    (x: any) => x.active && x.semantic === "open" && x.id !== stage,
+  ).id;
+  await assert.rejects(
+    cmd(
+      "board_move",
+      { board: "trips", column: targetStage, order: [ids[2], ids[0]] },
+      ids[2],
+      1,
+    ),
+  );
+  assert.equal(
+    (await snapshot("trips", {}, ids[2])).journeys[0].stage,
+    stage,
+    "invalid ordering rolls back the stage move",
+  );
+  await cmd(
+    "board_move",
+    { board: "trips", column: targetStage, order: [ids[2]] },
+    ids[2],
+    1,
+  );
+  assert.equal(
+    (await snapshot("trips", {}, ids[2])).journeys[0].stage,
+    targetStage,
+  );
+  await db.exec("reset role");
+  const boardViewer = randomUUID();
+  await db.query(
+    "insert into auth.users(id,email) values($1,'board-viewer@example.test')",
+    [boardViewer],
+  );
+  await db.query(
+    'insert into public.memberships(id,workspace_id,name,email,role,status,privileges) values($1,$2,\'Board Viewer\',\'board-viewer@example.test\',\'member\',\'active\',\'{"sales":"none","trips":"view","finance":"none","docs":"none"}\')',
+    [boardViewer, w],
+  );
+  await asUser(boardViewer);
+  assert.deepEqual(
+    (await snapshot("trips")).boardOrders,
+    {},
+    "ordering belongs to one user",
+  );
+  await assert.rejects(
+    cmd(
+      "board_move",
+      { board: "trips", column: stage, order: [ids[0]] },
+      ids[0],
+      1,
+    ),
+  );
+  await anonymous();
+  await assert.rejects(
+    cmd(
+      "board_move",
+      { board: "trips", column: stage, order: [ids[0]] },
+      ids[0],
+      1,
+    ),
+  );
+  await asUser(admin);
+});
+await test("task Kanban order survives fresh snapshots, filters and a status move", async () => {
+  await asUser(admin);
+  const create = (title: string) =>
+    cmd("create_task", {
+      title,
+      description: "",
+      assignee: admin,
+      context: "internal",
+      due: "2100-01-01",
+    });
+  const first = await create("First order fixture"),
+    second = await create("Second order fixture");
+  await cmd(
+    "board_move",
+    { board: "tasks", column: "Assigned", order: [second, first] },
+    second,
+    1,
+  );
+  for (const filters of [{}, { from: "2100-01-01", to: "2100-01-01" }]) {
+    const home = await snapshot("home", filters);
+    assert.deepEqual(
+      home.tasks
+        .filter((t: any) => [first, second].includes(t.id))
+        .map((t: any) => t.id),
+      [second, first],
+    );
+    assert.deepEqual(home.boardOrders.tasks.Assigned, [second, first]);
+  }
+  await cmd(
+    "board_move",
+    { board: "tasks", column: "Doing", order: [second] },
+    second,
+    1,
+  );
+  assert.equal(
+    (await snapshot("home")).tasks.find((t: any) => t.id === second).status,
+    "Doing",
+  );
+  await asUser(sales);
+  await assert.rejects(
+    cmd(
+      "board_move",
+      { board: "tasks", column: "Assigned", order: [first] },
+      first,
+      1,
+    ),
+  );
+  await asUser(admin);
 });
 await test("short share capabilities can be recovered, copied, edited and permanently revoked without losing history", async () => {
   await asUser(admin);
@@ -2902,3 +3060,4 @@ await db.close();
 await import("./test-refinements-migration");
 await import("./test-contacts-migration");
 await import("./test-share-migration");
+await import("./test-kanban-migration");

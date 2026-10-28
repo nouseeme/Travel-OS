@@ -5,9 +5,14 @@ import {
   useDroppable,
   PointerSensor,
   KeyboardSensor,
+  pointerWithin,
+  closestCorners,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragOverEvent,
+  type CollisionDetection,
+  type KeyboardCoordinateGetter,
 } from "@dnd-kit/core";
 import {
   GripVertical,
@@ -21,7 +26,75 @@ import {
 import type { Task, Journey, Snapshot, Command } from "@/lib/model";
 import { can, deadline, shortDate, initials } from "@/lib/format";
 import { Button } from "./ui/button";
-import type { ReactNode } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
+import {
+  placeBoardCard,
+  sortBoardRows,
+  type BoardSort,
+} from "@/lib/board-order";
+
+const collisionDetection: CollisionDetection = (args) => {
+  const targets = {
+    ...args,
+    droppableContainers: args.droppableContainers.filter(
+      (item) => item.id !== args.active.id,
+    ),
+  };
+  const hits = args.pointerCoordinates
+    ? pointerWithin(targets)
+    : closestCorners(targets);
+  if (!args.pointerCoordinates) return hits;
+  const cards = hits.filter(
+    (hit) =>
+      args.droppableContainers.find((item) => item.id === hit.id)?.data.current
+        ?.type === "card",
+  );
+  return cards.length ? cards : hits;
+};
+const keyboardCoordinates: KeyboardCoordinateGetter = (
+  event,
+  { currentCoordinates, context },
+) => {
+  const rect = context.collisionRect;
+  if (
+    !rect ||
+    !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code)
+  )
+    return;
+  event.preventDefault();
+  const horizontal = event.code === "ArrowLeft" || event.code === "ArrowRight";
+  const positive = event.code === "ArrowDown" || event.code === "ArrowRight";
+  const candidates = context.droppableContainers
+    .getEnabled()
+    .flatMap((item) => {
+      if (item.id === context.active?.id) return [];
+      const target = context.droppableRects.get(item.id);
+      if (!target || (!horizontal && item.data.current?.type !== "card"))
+        return [];
+      const dx = target.left - rect.left,
+        dy = target.top - rect.top;
+      if (
+        (horizontal ? Math.abs(dx) < 1 : Math.abs(dx) > rect.width / 2) ||
+        (positive ? (horizontal ? dx : dy) <= 1 : (horizontal ? dx : dy) >= -1)
+      )
+        return [];
+      return [
+        {
+          target,
+          distance: horizontal
+            ? Math.abs(dx) * 10 + Math.abs(dy)
+            : Math.abs(dy),
+        },
+      ];
+    })
+    .sort((a, b) => a.distance - b.distance);
+  const target = candidates[0]?.target;
+  if (target)
+    return {
+      x: currentCoordinates.x + target.left - rect.left,
+      y: currentCoordinates.y + target.top - rect.top,
+    };
+};
 export function Column({
   name,
   label,
@@ -35,7 +108,10 @@ export function Column({
   index: number;
   children: ReactNode;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: name });
+  const { setNodeRef, isOver } = useDroppable({
+    id: name,
+    data: { type: "column", column: name },
+  });
   return (
     <section
       ref={setNodeRef}
@@ -54,6 +130,9 @@ function DragCard({
   className = "",
   id,
   disabled,
+  busy,
+  column,
+  drop,
   onOpen,
   label,
   children,
@@ -61,17 +140,39 @@ function DragCard({
   className?: string;
   id: string;
   disabled?: boolean;
+  busy?: boolean;
+  column: string;
+  drop?: "before" | "after";
   onOpen: () => void;
   label: string;
   children: ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({ id, disabled });
+    useDraggable({
+      id,
+      disabled: disabled || busy,
+      data: { type: "card", column },
+    });
+  const { setNodeRef: setDropRef } = useDroppable({
+    id,
+    data: { type: "card", column },
+  });
+  const setRefs = useCallback(
+    (node: HTMLElement | null) => {
+      setNodeRef(node);
+      setDropRef(node);
+    },
+    [setNodeRef, setDropRef],
+  );
   return (
     <article
-      ref={setNodeRef}
+      ref={setRefs}
       className={
-        "board-card " + className + " " + (isDragging ? "dragging" : "")
+        "board-card " +
+        className +
+        " " +
+        (isDragging ? "dragging" : "") +
+        (drop ? ` drop-${drop}` : "")
       }
       style={
         transform
@@ -86,7 +187,8 @@ function DragCard({
       {!disabled && (
         <button
           className="drag-handle"
-          aria-label="Drag card"
+          disabled={busy}
+          aria-label={`Atur urutan ${label.replace(/^Buka /, "")}`}
           {...listeners}
           {...attributes}
         >
@@ -106,6 +208,8 @@ export function Board({
   onEdit,
   onNavigate,
   onAdd,
+  sort = "manual",
+  onManualSort,
 }: {
   columns: readonly string[];
   labels?: Record<string, string>;
@@ -115,27 +219,81 @@ export function Board({
   onEdit: (t: Task) => void;
   onNavigate: (url: string) => void;
   onAdd: () => void;
+  sort?: BoardSort;
+  onManualSort?: () => void;
 }) {
+  const [saving, setSaving] = useState(false),
+    [drop, setDrop] = useState<{ id: string; side: "before" | "after" } | null>(
+      null,
+    );
+  const pending = useRef(false);
+  const board =
+    mode === "tasks"
+      ? "tasks"
+      : s.journeys[0]?.kind === "lead"
+        ? "sales"
+        : "trips";
+  function rowsIn(column: string): (Journey | Task)[] {
+    const rows =
+      mode === "tasks"
+        ? s.tasks.filter((t) => t.status === column)
+        : s.journeys.filter((j) => j.stage === column);
+    return sortBoardRows<Journey | Task>(
+      rows,
+      sort,
+      s.boardOrders?.[board]?.[column] || [],
+      s.today,
+    );
+  }
+  function afterTarget(e: DragEndEvent | DragOverEvent) {
+    if ("key" in e.activatorEvent) return e.delta.y > 0;
+    const translated = e.active.rect.current.translated;
+    return (
+      !!translated &&
+      !!e.over &&
+      translated.top + translated.height / 2 >
+        e.over.rect.top + e.over.rect.height / 2
+    );
+  }
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: keyboardCoordinates }),
   );
-  function dragEnd(e: DragEndEvent) {
-    if (!e.over || !columns.includes(String(e.over.id))) return;
+  async function dragEnd(e: DragEndEvent) {
+    setDrop(null);
+    if (Math.abs(e.delta.x) < 1 && Math.abs(e.delta.y) < 1) return;
+    if (!e.over || e.active.id === e.over.id || pending.current) return;
+    const column = e.over.data.current?.column;
+    if (typeof column !== "string" || !columns.includes(column)) return;
     const item =
       mode === "tasks"
         ? s.tasks.find((t) => t.id === e.active.id)
         : s.journeys.find((j) => j.id === e.active.id);
     if (!item) return;
-    onCommand({
-      action: mode === "tasks" ? "task_status" : "stage",
-      id: item.id,
-      version: item.version,
-      data:
-        mode === "tasks"
-          ? { status: String(e.over.id) }
-          : { stage: String(e.over.id) },
-    });
+    const current = rowsIn(column).map((row) => row.id);
+    const order = placeBoardCard(
+      current,
+      item.id,
+      e.over.data.current?.type === "card" ? String(e.over.id) : null,
+      afterTarget(e),
+    );
+    if (JSON.stringify(current) === JSON.stringify(order)) return;
+    pending.current = true;
+    setSaving(true);
+    try {
+      if (
+        await onCommand({
+          action: "board_move",
+          id: item.id,
+          version: item.version,
+          data: { board, column, order },
+        })
+      )
+        onManualSort?.();
+    } finally {
+      pending.current = false;
+      setSaving(false);
+    }
   }
   function task(t: Task) {
     const parent = s.journeys.find((j) => j.id === t.parent);
@@ -156,8 +314,11 @@ export function Board({
     return (
       <DragCard
         id={t.id}
+        column={t.status}
+        drop={drop?.id === t.id ? drop.side : undefined}
         className="task-item"
         disabled={!statusEditable}
+        busy={saving}
         key={t.id}
         label={`Buka ${t.title}`}
         onOpen={openTask}
@@ -249,7 +410,10 @@ export function Board({
     return (
       <DragCard
         id={j.id}
+        column={j.stage}
+        drop={drop?.id === j.id ? drop.side : undefined}
         disabled={!editable}
+        busy={saving}
         key={j.id}
         label={`Buka ${j.name || j.client}`}
         onOpen={() =>
@@ -332,10 +496,28 @@ export function Board({
     );
   }
   return (
-    <DndContext sensors={sensors} onDragEnd={dragEnd}>
-      <p className="board-hint">
-        Geser papan untuk melihat tahap lainnya. Status juga bisa diubah dari
-        menu pada kartu.
+    <DndContext
+      sensors={sensors}
+      collisionDetection={collisionDetection}
+      onDragEnd={dragEnd}
+      onDragCancel={() => setDrop(null)}
+      onDragOver={(e) =>
+        setDrop(
+          e.over &&
+            e.over.id !== e.active.id &&
+            e.over.data.current?.type === "card"
+            ? {
+                id: String(e.over.id),
+                side: afterTarget(e) ? "after" : "before",
+              }
+            : null,
+        )
+      }
+    >
+      <p className="board-hint" role="status">
+        {saving
+          ? "Menyimpan urutan…"
+          : "Tarik pegangan kartu untuk mengatur urutan atau pindah grup. Urutan manual tersimpan untuk papan Anda."}
       </p>
       <div
         className={"kanban " + (columns.length === 4 ? "four" : "")}
@@ -348,10 +530,7 @@ export function Board({
         tabIndex={0}
       >
         {columns.map((col, i) => {
-          const rows =
-            mode === "tasks"
-              ? s.tasks.filter((t) => t.status === col)
-              : s.journeys.filter((j) => j.stage === col);
+          const rows = rowsIn(col);
           return (
             <Column
               name={col}

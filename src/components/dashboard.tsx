@@ -1024,11 +1024,18 @@ export function Dashboard() {
                                     Urutkan
                                     <select
                                       aria-label="Urutkan trip"
-                                      value={filters.trip_sort || "nearest"}
+                                      value={
+                                        filters.trip_sort ||
+                                        (Object.keys(s.boardOrders?.trips || {})
+                                          .length
+                                          ? "manual"
+                                          : "nearest")
+                                      }
                                       onChange={(e) =>
                                         filter("trip_sort", e.target.value)
                                       }
                                     >
+                                      <option value="manual">Manual</option>
                                       <option value="nearest">
                                         Keberangkatan terdekat
                                       </option>
@@ -1221,6 +1228,20 @@ export function Dashboard() {
                               ).map((x) => [x.id, x.label]),
                             )}
                             mode="journeys"
+                            sort={
+                              view === "trips"
+                                ? filters.trip_sort ||
+                                  (Object.keys(s.boardOrders?.trips || {})
+                                    .length
+                                    ? "manual"
+                                    : "nearest")
+                                : "manual"
+                            }
+                            onManualSort={
+                              view === "trips"
+                                ? () => filter("trip_sort", "manual")
+                                : undefined
+                            }
                             s={s}
                             onCommand={run}
                             onEdit={() => {}}

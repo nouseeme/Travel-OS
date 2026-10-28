@@ -152,7 +152,7 @@ export interface State {
   timezone: string;
 }
 export interface Filters {
-  trip_sort?: "nearest" | "latest" | "name_asc" | "name_desc";
+  trip_sort?: "manual" | "nearest" | "latest" | "name_asc" | "name_desc";
   trip_stage?: string;
   departure_from?: string;
   departure_to?: string;
@@ -179,6 +179,7 @@ export interface Filters {
   pic?: string;
 }
 export interface Snapshot {
+  boardOrders?: import("./board-order").BoardOrders;
   helpSettings?: { public: boolean; version: number };
   homeTaskCount?: number;
   contactDirectory?: DirectoryContact[];
