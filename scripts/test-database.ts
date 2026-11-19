@@ -3114,6 +3114,8 @@ await test("individual note links expose one saved note and can be revoked indep
     const other = (await manage("create", journeyId, sibling.id))!;
     assert.equal(link.moduleSlug, "istanbul-brief");
     assert.equal(link.noteSlug, "hotel-details");
+    assert.match(link.key, /^[A-Za-z0-9_-]{5}$/);
+    assert.match(other.key, /^[A-Za-z0-9_-]{5}$/);
     assert.equal(other.noteSlug, link.noteSlug);
     assert.notEqual(link.key, other.key);
     assert.deepEqual(await manage("create", journeyId, note.id), link);

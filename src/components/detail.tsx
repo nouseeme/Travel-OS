@@ -620,6 +620,18 @@ function Notes({
       dirty(false);
     }
   }
+  const saveButton = (
+    <button
+      type="button"
+      className="icon-button"
+      aria-label="Simpan notes"
+      title="Simpan notes"
+      disabled={!changed || busy}
+      onClick={save}
+    >
+      <Save size={15} />
+    </button>
+  );
   return (
     <section className="panel spaced-panel notes-panel">
       <div className="panel-heading">
@@ -642,12 +654,7 @@ function Notes({
               Note
             </Button>
           )}
-          {edit && (
-            <Button size="sm" disabled={!changed || busy} onClick={save}>
-              <Save size={14} />
-              Simpan notes
-            </Button>
-          )}
+          {edit && !note && changed && saveButton}
           {changed && <CopyChanges value={notes} />}
         </div>
       </div>
@@ -667,9 +674,10 @@ function Notes({
         <div className="note-body">
           {note && (
             <>
-              {edit ? (
-                <div className="note-title-row">
+              <div className="note-title-row">
+                {edit ? (
                   <input
+                    className="note-title"
                     aria-label="Judul note"
                     value={note.title}
                     onChange={(e) =>
@@ -682,9 +690,25 @@ function Notes({
                       )
                     }
                   />
+                ) : (
+                  <h3 className="note-title">{note.title}</h3>
+                )}
+                {edit && saveButton}
+                {manageShare && j.notes.some((saved) => saved.id === note.id) && (
+                  <NoteSharing
+                    key={j.id + ":" + note.id}
+                    journeyId={j.id}
+                    noteId={note.id}
+                    canCreate={edit}
+                    disabled={busy || changed}
+                  />
+                )}
+                {edit && (
                   <button
+                    type="button"
                     className="icon-button negative"
                     aria-label="Hapus note"
+                    title="Hapus note"
                     onClick={() => {
                       if (confirm("Hapus named note ini?"))
                         update(notes.filter((n) => n.id !== note.id));
@@ -692,19 +716,8 @@ function Notes({
                   >
                     <Trash2 size={15} />
                   </button>
-                </div>
-              ) : (
-                <h3>{note.title}</h3>
-              )}
-              {manageShare && j.notes.some((saved) => saved.id === note.id) && (
-                <NoteSharing
-                  key={j.id + ":" + note.id}
-                  journeyId={j.id}
-                  noteId={note.id}
-                  canCreate={edit}
-                  disabled={busy || changed}
-                />
-              )}
+                )}
+              </div>
               {!edit ? (
                 <Markdown body={note.body} />
               ) : (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Check, Copy, Link2, RefreshCw, Unlink2 } from "lucide-react";
 
 type ShareAction = "status" | "create" | "revoke";
 
@@ -36,7 +36,7 @@ export function NoteSharing({
   const [url, setUrl] = useState<string | null>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const [copied, setCopied] = useState(false);
   const [showUrl, setShowUrl] = useState(false);
 
   useEffect(() => {
@@ -57,12 +57,10 @@ export function NoteSharing({
   async function manage(action: ShareAction) {
     setLoading(true);
     setError("");
-    setMessage("");
+    setCopied(false);
     try {
       setUrl(await requestShare(action, journeyId, noteId));
       setShowUrl(false);
-      if (action === "create") setMessage("Link baca-saja dibuat.");
-      if (action === "revoke") setMessage("Link dicabut.");
     } catch (error) {
       setError(error instanceof Error ? error.message : "Gagal mengubah link.");
     } finally {
@@ -72,57 +70,67 @@ export function NoteSharing({
 
   async function copy() {
     if (!url) return;
-    setMessage("");
+    setCopied(false);
     setError("");
     try {
       await navigator.clipboard.writeText(url);
-      setMessage("Link disalin.");
+      setCopied(true);
+      setShowUrl(false);
     } catch {
       setShowUrl(true);
     }
   }
 
+  const retry = url === undefined && !loading;
+  const label = url
+    ? "Unshare"
+    : retry
+      ? "Muat ulang link"
+      : "Buat link baca-saja";
+
   return (
     <>
-      <div className="row-actions note-share-actions" aria-busy={loading}>
-        {url ? (
-          <>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={loading}
-              onClick={copy}
-            >
-              Salin link
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={loading}
-              onClick={() => manage("revoke")}
-            >
-              Unshare
-            </Button>
-          </>
-        ) : url === null && canCreate ? (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={loading || disabled}
-            onClick={() => manage("create")}
-          >
-            Buat link baca-saja
-          </Button>
-        ) : url === undefined && !loading ? (
-          <Button size="sm" variant="outline" onClick={() => manage("status")}>
-            Muat ulang link
-          </Button>
-        ) : null}
-        {message && <span role="status">{message}</span>}
-        {error && <span role="alert">{error}</span>}
-      </div>
+      {(url || (url === null && canCreate) || retry) && (
+        <button
+          type="button"
+          className="icon-button"
+          aria-label={label}
+          title={label}
+          disabled={loading || (!url && !retry && disabled)}
+          onClick={() => manage(url ? "revoke" : retry ? "status" : "create")}
+        >
+          {url ? (
+            <Unlink2 size={15} />
+          ) : retry ? (
+            <RefreshCw size={15} />
+          ) : (
+            <Link2 size={15} />
+          )}
+        </button>
+      )}
+      {url && (
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Salin link"
+          title={copied ? "Link disalin" : "Salin link"}
+          disabled={loading}
+          onClick={copy}
+        >
+          {copied ? <Check size={15} /> : <Copy size={15} />}
+        </button>
+      )}
+      <span role="status" className="sr-only">
+        {copied && "Link disalin."}
+      </span>
+      {error && (
+        <span role="alert" className="note-share-feedback">
+          {error}
+        </span>
+      )}
       {url && showUrl && (
         <input
+          className="note-share-feedback"
           aria-label="Link baca-saja"
           value={url}
           readOnly

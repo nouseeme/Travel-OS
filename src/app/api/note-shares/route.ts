@@ -14,11 +14,16 @@ export async function POST(request: Request) {
     originCheck(request);
     const { action, journeyId, noteId } = schema.parse(await body(request));
     const client = await verifiedClient();
-    const { data, error } = await client.rpc("app_note_share_manage", {
+    const args = {
       action_name: action,
       parent_id: journeyId,
       target_note_id: noteId,
-    });
+    };
+    let { data, error } = await client.rpc("app_note_share_manage", args);
+    // A generated key can collide with an active link. Retry with a fresh key.
+    if (action === "create" && error?.code === "23505") {
+      ({ data, error } = await client.rpc("app_note_share_manage", args));
+    }
     if (error) dbError(error);
 
     const url = data

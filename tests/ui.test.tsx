@@ -837,16 +837,23 @@ test("Sales tab switching protects unsaved notes and saves them explicitly", asy
 });
 test("sharing controls follow the selected saved note", async () => {
   const originalFetch = globalThis.fetch;
+  const originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
   const first = { id: randomUUID(), title: "Hotel brief", body: "First" };
   const second = { id: randomUUID(), title: "Guide brief", body: "Second" };
+  const shareUrl = "http://127.0.0.1:3000/trip/note/hotel-brief?key=Ab_12";
   const links = new Map<string, string>();
+  let copied = "";
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: { writeText: async (value: string) => { copied = value; } },
+  });
   globalThis.fetch = async (url, options) => {
     assert.equal(url, "/api/note-shares");
     const { action, journeyId, noteId } = JSON.parse(String(options?.body));
     assert.equal(journeyId, journey.id);
     if (action === "create") {
       assert.equal(noteId, first.id);
-      links.set(noteId, "http://127.0.0.1:3000/trip/note/hotel-brief?key=example");
+      links.set(noteId, shareUrl);
     }
     if (action === "revoke") {
       assert.equal(noteId, first.id);
@@ -869,8 +876,17 @@ test("sharing controls follow the selected saved note", async () => {
       />,
     );
     fireEvent.click(ui.getByRole("button", { name: "Notes" }));
-    fireEvent.click(await ui.findByRole("button", { name: "Buat link baca-saja" }));
-    assert.ok(await ui.findByRole("button", { name: "Salin link" }));
+    const titleRow = ui.getByRole("textbox", { name: "Judul note" }).parentElement;
+    const share = await ui.findByRole("button", { name: "Buat link baca-saja" });
+    assert.equal(share.parentElement, titleRow);
+    assert.equal(ui.getByRole("button", { name: "Hapus note" }).parentElement, titleRow);
+    assert.equal(ui.getByRole("button", { name: "Simpan notes" }).parentElement, titleRow);
+    assert.equal(ui.queryByRole("button", { name: "Salin link" }), null);
+    fireEvent.click(share);
+    const copy = await ui.findByRole("button", { name: "Salin link" });
+    assert.equal(copy.parentElement, titleRow);
+    fireEvent.click(copy);
+    await waitFor(() => assert.equal(copied, shareUrl));
     fireEvent.click(ui.getByRole("button", { name: "Guide brief" }));
     assert.ok(await ui.findByRole("button", { name: "Buat link baca-saja" }));
     assert.equal(ui.queryByRole("button", { name: "Unshare" }), null);
@@ -881,6 +897,9 @@ test("sharing controls follow the selected saved note", async () => {
   } finally {
     cleanup();
     globalThis.fetch = originalFetch;
+    if (originalClipboard)
+      Object.defineProperty(navigator, "clipboard", originalClipboard);
+    else Reflect.deleteProperty(navigator, "clipboard");
   }
 });
 test("Trips user without Finance sees no Finance tab or cash data controls", () => {

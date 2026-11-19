@@ -3,6 +3,7 @@ import { escapeSharedHtml, publicDocument } from "@/lib/public-document";
 import { publicMarkdown } from "@/lib/public-markdown";
 
 const slugPattern = /^[a-z0-9][a-z0-9-]{0,79}$/;
+const accessKeyPattern = /^(?:[A-Za-z0-9_-]{5}|[a-f0-9]{32})$/;
 
 export async function GET(
   request: Request,
@@ -17,7 +18,7 @@ export async function GET(
     slugPattern.test(moduleSlug) &&
     slugPattern.test(noteSlug) &&
     accessKey &&
-    /^[a-f0-9]{32}$/.test(accessKey) &&
+    accessKeyPattern.test(accessKey) &&
     supabaseUrl &&
     publishableKey
   ) {
