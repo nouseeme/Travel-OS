@@ -835,6 +835,54 @@ test("Sales tab switching protects unsaved notes and saves them explicitly", asy
     globalThis.confirm = originalConfirm;
   }
 });
+test("sharing controls follow the selected saved note", async () => {
+  const originalFetch = globalThis.fetch;
+  const first = { id: randomUUID(), title: "Hotel brief", body: "First" };
+  const second = { id: randomUUID(), title: "Guide brief", body: "Second" };
+  const links = new Map<string, string>();
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, "/api/note-shares");
+    const { action, journeyId, noteId } = JSON.parse(String(options?.body));
+    assert.equal(journeyId, journey.id);
+    if (action === "create") {
+      assert.equal(noteId, first.id);
+      links.set(noteId, "http://127.0.0.1:3000/trip/note/hotel-brief?key=example");
+    }
+    if (action === "revoke") {
+      assert.equal(noteId, first.id);
+      links.delete(noteId);
+    }
+    return Response.json({ url: links.get(noteId) ?? null });
+  };
+
+  try {
+    const ui = render(
+      <Detail
+        journey={{ ...journey, notes: [first, second] }}
+        snapshot={snapshot}
+        busy={false}
+        error=""
+        onCommand={async () => true}
+        onEdit={() => {}}
+        onNavigate={() => {}}
+        onDirty={() => {}}
+      />,
+    );
+    fireEvent.click(ui.getByRole("button", { name: "Notes" }));
+    fireEvent.click(await ui.findByRole("button", { name: "Buat link baca-saja" }));
+    assert.ok(await ui.findByRole("button", { name: "Salin link" }));
+    fireEvent.click(ui.getByRole("button", { name: "Guide brief" }));
+    assert.ok(await ui.findByRole("button", { name: "Buat link baca-saja" }));
+    assert.equal(ui.queryByRole("button", { name: "Unshare" }), null);
+    fireEvent.click(ui.getByRole("button", { name: "Hotel brief" }));
+    fireEvent.click(await ui.findByRole("button", { name: "Unshare" }));
+    assert.ok(await ui.findByRole("button", { name: "Buat link baca-saja" }));
+    assert.equal(links.size, 0);
+  } finally {
+    cleanup();
+    globalThis.fetch = originalFetch;
+  }
+});
 test("Trips user without Finance sees no Finance tab or cash data controls", () => {
   const person: Person = {
     ...user,

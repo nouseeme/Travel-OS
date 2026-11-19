@@ -3,8 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { contentSecurityPolicy } from "./lib/security-headers";
 import { authCookieOptions } from "./lib/supabase/cookie-options";
 export async function proxy(request: NextRequest) {
+  const noteDocument = /^\/[^/]+\/note\/[^/]+\/?$/.test(request.nextUrl.pathname);
   // Static shared documents supply their own stricter script-free policy.
   const document =
+    !noteDocument &&
     !request.nextUrl.pathname.startsWith("/api/") &&
     !request.nextUrl.pathname.startsWith("/share/") &&
     !request.nextUrl.pathname.startsWith("/s/");
@@ -24,6 +26,7 @@ export async function proxy(request: NextRequest) {
   }
   let response = next();
   if (
+    !noteDocument &&
     !request.nextUrl.pathname.startsWith("/share/") &&
     !request.nextUrl.pathname.startsWith("/s/") &&
     !request.nextUrl.pathname.startsWith("/t/") &&

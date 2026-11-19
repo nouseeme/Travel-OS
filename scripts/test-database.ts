@@ -3053,6 +3053,115 @@ await test("short share capabilities can be recovered, copied, edited and perman
     await asUser(admin);
   }
 });
+await test("individual note links expose one saved note and can be revoked independently", async () => {
+  type Link = { moduleSlug: string; noteSlug: string; key: string };
+  type PublicNote = { title: string; body: string };
+  const manage = async (action: string, journeyId: string, noteId: string) =>
+    (
+      await db.query<{ result: Link | null }>(
+        "select public.app_note_share_manage($1,$2,$3) result",
+        [action, journeyId, noteId],
+      )
+    ).rows[0].result;
+  const read = async ({ moduleSlug, noteSlug, key }: Link) =>
+    (
+      await db.query<{ result: PublicNote | null }>(
+        "select public.app_note_share_read($1,$2,$3) result",
+        [moduleSlug, noteSlug, key],
+      )
+    ).rows[0].result;
+  const editor = randomUUID();
+  const viewer = randomUUID();
+  await db.exec("reset role");
+  for (const [id, access] of [[editor, "edit"], [viewer, "view"]] as const) {
+    const email = `note-${access}@example.test`;
+    await db.query("insert into auth.users(id,email) values($1,$2)", [id, email]);
+    await db.query(
+      "insert into public.memberships(id,workspace_id,name,email,role,status,privileges) values($1,$2,$3,$4,'member','active',$5)",
+      [id, w, `Note ${access}`, email, JSON.stringify({ sales: access, trips: access, finance: "none" })],
+    );
+  }
+  for (const [kind, view] of [
+    ["trip", "trips"],
+    ["lead", "sales"],
+  ] as const) {
+    await asUser(admin);
+    const journeyId = await cmd("create_journey", {
+      ...leadData,
+      kind,
+      stage: kind === "trip" ? "Planned" : "Drafts",
+      start: "2027-01-10",
+      end: "2027-01-12",
+      name: "İstanbul Brief",
+      pic: editor,
+      people: [editor],
+    });
+    const record = (await snapshot(view, {}, journeyId)).journeys[0];
+    const note = {
+      id: record.notes[0].id,
+      title: "Hôtel & Details",
+      body: "Public body",
+    };
+    const sibling = { ...note, id: randomUUID(), body: "Separate note" };
+    await cmd("content", { notes: [note, sibling] }, journeyId, record.version);
+
+    await asUser(viewer);
+    await assert.rejects(manage("status", journeyId, note.id), { code: "42501" });
+    await assert.rejects(manage("create", journeyId, note.id), { code: "42501" });
+    await asUser(editor);
+    assert.equal(await manage("status", journeyId, note.id), null);
+    const link = (await manage("create", journeyId, note.id))!;
+    const other = (await manage("create", journeyId, sibling.id))!;
+    assert.equal(link.moduleSlug, "istanbul-brief");
+    assert.equal(link.noteSlug, "hotel-details");
+    assert.equal(other.noteSlug, link.noteSlug);
+    assert.notEqual(link.key, other.key);
+    assert.deepEqual(await manage("create", journeyId, note.id), link);
+    assert.deepEqual(await manage("status", journeyId, note.id), link);
+
+    await anonymous();
+    await assert.rejects(db.query("select * from private.note_share_links"));
+    await assert.rejects(manage("revoke", journeyId, note.id), { code: "42501" });
+    assert.equal(await read({ ...link, key: "" }), null);
+    assert.equal(await read({ ...link, noteSlug: "another-title" }), null);
+    assert.deepEqual(await read(link), { title: note.title, body: note.body });
+    assert.deepEqual(await read(other), {
+      title: sibling.title,
+      body: sibling.body,
+    });
+
+    await asUser(editor);
+    const updated = { ...note, title: "New title", body: "Latest saved body" };
+    await cmd(
+      "content",
+      { notes: [updated, sibling] },
+      journeyId,
+      record.version + 1,
+    );
+    await anonymous();
+    assert.deepEqual(await read(link), { title: updated.title, body: updated.body });
+    await asUser(editor);
+    await manage("revoke", journeyId, note.id);
+    assert.equal(await manage("status", journeyId, note.id), null);
+    const replacement = (await manage("create", journeyId, note.id))!;
+    assert.notEqual(replacement.key, link.key);
+    await cmd("content", { notes: [updated] }, journeyId, record.version + 2);
+    await cmd(
+      "content",
+      { notes: [updated, sibling] },
+      journeyId,
+      record.version + 3,
+    );
+
+    await anonymous();
+    assert.equal(await read(link), null);
+    assert.equal(await read(other), null);
+    assert.deepEqual(await read(replacement), {
+      title: updated.title,
+      body: updated.body,
+    });
+  }
+});
 console.log(
   `Database regression: ${passed} scenarios passed (embedded PostgreSQL; hosted Auth/email/concurrency remain separate gates).`,
 );

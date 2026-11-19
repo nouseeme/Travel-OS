@@ -27,6 +27,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { PlainNote } from "./plain-note";
+import { NoteSharing } from "./note-sharing";
 import { ApplyTemplate } from "./p1";
 import { Sharing } from "./sharing";
 import {
@@ -369,6 +370,9 @@ export function Detail({
         <Notes
           j={j}
           edit={edit}
+          manageShare={
+            !shared && can(s.user, j.kind === "lead" ? "sales" : "trips", true)
+          }
           busy={busy}
           run={saveContent}
           dirty={(v, d) => areaDirty("notes", v, d)}
@@ -587,7 +591,8 @@ function Notes({
   run,
   dirty,
   tools,
-}: ContentProps & { tools?: React.ReactNode }) {
+  manageShare,
+}: ContentProps & { tools?: React.ReactNode; manageShare: boolean }) {
   const [notes, setNotes] = useState<Note[]>(structuredClone(j.notes)),
     [selected, setSelected] = useState(j.notes[0]?.id || ""),
     [changed, setChanged] = useState(false);
@@ -690,6 +695,15 @@ function Notes({
                 </div>
               ) : (
                 <h3>{note.title}</h3>
+              )}
+              {manageShare && j.notes.some((saved) => saved.id === note.id) && (
+                <NoteSharing
+                  key={j.id + ":" + note.id}
+                  journeyId={j.id}
+                  noteId={note.id}
+                  canCreate={edit}
+                  disabled={busy || changed}
+                />
               )}
               {!edit ? (
                 <Markdown body={note.body} />
